@@ -1,0 +1,531 @@
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$violet-palette,
+        tertiary: mat.$azure-palette,
+      ),
+      typography: (
+        plain-family: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        brand-family: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        bold-weight: 600,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+}
+
+:root {
+  --zv-radius-sm: 8px;
+  --zv-radius-md: 12px;
+  --zv-radius-lg: 16px;
+  --zv-radius-xl: 24px;
+
+  --zv-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --zv-shadow-md: 0 4px 10px -2px rgba(16, 24, 40, 0.06),
+    0 2px 6px -1px rgba(16, 24, 40, 0.04);
+  --zv-shadow-lg: 0 20px 40px -12px rgba(16, 24, 40, 0.18),
+    0 8px 20px -8px rgba(16, 24, 40, 0.08);
+
+  --zv-gradient-brand: linear-gradient(135deg, #6d5efc 0%, #7c3aed 45%, #2563eb 100%);
+  --zv-gradient-brand-soft: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.12) 0%,
+    rgba(37, 99, 235, 0.08) 100%
+  );
+  --zv-gradient-admin: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #334155 100%);
+  --zv-surface-glass: rgba(255, 255, 255, 0.72);
+  --zv-border-subtle: 1px solid rgba(15, 23, 42, 0.06);
+
+  /* -----------------------------------------------------------
+   * Semantic status colors — one source of truth used by
+   * stat cards and status chips across the app.
+   * --------------------------------------------------------- */
+  --zv-status-neutral-fg: #334155;
+  --zv-status-neutral-muted: #64748b;
+  --zv-status-neutral-bg: rgba(255, 255, 255, 0.7);
+  --zv-status-neutral-border: rgba(148, 163, 184, 0.35);
+
+  --zv-status-reserved-fg: #92400e;
+  --zv-status-reserved-accent: #b45309;
+  --zv-status-reserved-bg: rgba(254, 243, 199, 0.7);
+  --zv-status-reserved-border: rgba(253, 230, 138, 0.7);
+
+  --zv-status-pending-fg: #1e3a8a;
+  --zv-status-pending-accent: #1d4ed8;
+  --zv-status-pending-bg: rgba(219, 234, 254, 0.7);
+  --zv-status-pending-border: rgba(191, 219, 254, 0.7);
+
+  --zv-status-completed-fg: #065f46;
+  --zv-status-completed-accent: #047857;
+  --zv-status-completed-bg: rgba(209, 250, 229, 0.7);
+  --zv-status-completed-border: rgba(167, 243, 208, 0.7);
+
+  --zv-status-expired-fg: #334155;
+  --zv-status-expired-accent: #475569;
+  --zv-status-expired-bg: rgba(241, 245, 249, 0.75);
+  --zv-status-expired-border: rgba(203, 213, 225, 0.7);
+
+  --zv-status-rejected-fg: #9f1239;
+  --zv-status-rejected-accent: #be123c;
+  --zv-status-rejected-bg: rgba(255, 228, 230, 0.7);
+  --zv-status-rejected-border: rgba(254, 205, 211, 0.7);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--mat-sys-on-surface);
+  background: radial-gradient(
+      1200px 600px at -10% -10%,
+      rgba(124, 58, 237, 0.08),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 500px at 110% 10%,
+      rgba(37, 99, 235, 0.08),
+      transparent 55%
+    ),
+    var(--mat-sys-surface);
+  background-attachment: fixed;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.02em;
+}
+
+code,
+kbd,
+pre {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Material overrides for a more modern, softer look */
+.mat-mdc-card {
+  border-radius: var(--zv-radius-lg) !important;
+  box-shadow: var(--zv-shadow-sm) !important;
+  border: var(--zv-border-subtle);
+  background: var(--mat-sys-surface);
+  overflow: hidden;
+}
+
+.mat-mdc-card-header {
+  padding: 20px 20px 8px 20px !important;
+}
+
+.mat-mdc-card-content {
+  padding: 16px 20px 20px 20px !important;
+}
+
+.mat-mdc-card-title {
+  letter-spacing: -0.015em;
+  font-weight: 600 !important;
+}
+
+.mat-mdc-card-subtitle {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 13px !important;
+}
+
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-button {
+  border-radius: 999px !important;
+  letter-spacing: 0 !important;
+  font-weight: 500 !important;
+}
+
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-unelevated-button[color='primary'] {
+  background: var(--zv-gradient-brand) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px -6px rgba(109, 94, 252, 0.55) !important;
+}
+
+.mat-mdc-form-field {
+  .mdc-text-field--outlined {
+    --mdc-outlined-text-field-outline-color: rgba(15, 23, 42, 0.14);
+    --mdc-outlined-text-field-container-shape: 10px;
+  }
+}
+
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__leading,
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__notch,
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__trailing {
+  border-radius: 10px;
+}
+
+.mat-mdc-chip {
+  border-radius: 999px !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* -----------------------------------------------------------
+ * Modern data table
+ *
+ * All admin tables live inside a <mat-card>; the card already
+ * provides the rounded shell + shadow, so these rules focus on
+ * the inner anatomy: header band, cell rhythm, dividers, hover.
+ *
+ * Components can wrap a bare <table> in `.zv-table-wrap` to get
+ * the same card-like shell without needing <mat-card>.
+ * --------------------------------------------------------- */
+.mat-mdc-table {
+  background: transparent !important;
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.mat-mdc-header-row {
+  background: linear-gradient(
+    180deg,
+    rgba(124, 58, 237, 0.04) 0%,
+    rgba(37, 99, 235, 0.025) 100%
+  );
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  height: 44px !important;
+}
+
+.mat-mdc-header-cell {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant) !important;
+  border-bottom: none !important;
+  padding: 0 16px !important;
+  white-space: nowrap;
+}
+
+.mat-mdc-header-cell:first-of-type {
+  padding-left: 20px !important;
+}
+.mat-mdc-header-cell:last-of-type {
+  padding-right: 20px !important;
+}
+
+.mat-mdc-row {
+  height: 60px !important;
+  transition: background-color 120ms ease;
+}
+
+.mat-mdc-cell {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04) !important;
+  padding: 10px 16px !important;
+  color: var(--mat-sys-on-surface) !important;
+  font-size: 14px !important;
+}
+
+.mat-mdc-cell:first-of-type {
+  padding-left: 20px !important;
+}
+.mat-mdc-cell:last-of-type {
+  padding-right: 20px !important;
+}
+
+.mat-mdc-row:last-of-type .mat-mdc-cell {
+  border-bottom: none !important;
+}
+
+.mat-mdc-row:hover {
+  background: rgba(124, 58, 237, 0.035);
+}
+
+/* Numeric-feel: apply tabular numerals where the column is mostly numbers.
+ * Columns opt in by adding `.zv-cell-num` to the mat-cell / mat-header-cell. */
+.zv-cell-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Shell for tables that aren't wrapped in mat-card. */
+.zv-table-wrap {
+  border-radius: var(--zv-radius-lg);
+  border: var(--zv-border-subtle);
+  background: var(--mat-sys-surface);
+  box-shadow: var(--zv-shadow-sm);
+  overflow: hidden;
+}
+
+.mat-mdc-menu-panel {
+  border-radius: var(--zv-radius-md) !important;
+  box-shadow: var(--zv-shadow-lg) !important;
+  border: var(--zv-border-subtle);
+}
+
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-shape: 12px;
+}
+
+/* Page-level utilities */
+.zv-page {
+  padding: 28px 32px 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (max-width: 720px) {
+  .zv-page {
+    padding: 20px 16px 32px;
+  }
+}
+
+.zv-page-title {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.zv-page-subtitle {
+  margin: -10px 0 20px 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 14px;
+}
+
+.zv-flex-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.zv-spacer {
+  flex: 1;
+}
+
+.zv-card-section {
+  padding: 20px;
+}
+
+/* -----------------------------------------------------------
+ * Stat cards (used on My Bookings, All Bookings, etc.)
+ * Structure:
+ *   <div class="zv-stats-grid">
+ *     <div class="zv-stat-card zv-stat-card--reserved">
+ *       <div class="zv-stat-label">Reserved</div>
+ *       <div class="zv-stat-value">{{ count }}</div>
+ *     </div>
+ *   </div>
+ * --------------------------------------------------------- */
+.zv-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .zv-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .zv-stats-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.zv-stat-card {
+  padding: 16px;
+  border-radius: var(--zv-radius-lg);
+  border: 1px solid var(--zv-status-neutral-border);
+  background: var(--zv-status-neutral-bg);
+  box-shadow: var(--zv-shadow-sm);
+  backdrop-filter: saturate(180%) blur(6px);
+  -webkit-backdrop-filter: saturate(180%) blur(6px);
+  transition:
+    transform 160ms ease,
+    box-shadow 200ms ease;
+}
+
+.zv-stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--zv-shadow-md);
+}
+
+.zv-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--zv-status-neutral-muted);
+}
+
+.zv-stat-value {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--zv-status-neutral-fg);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Variants — each only adjusts the three tokens already defined in :root */
+.zv-stat-card--reserved {
+  background: var(--zv-status-reserved-bg);
+  border-color: var(--zv-status-reserved-border);
+}
+.zv-stat-card--reserved .zv-stat-label {
+  color: var(--zv-status-reserved-accent);
+}
+.zv-stat-card--reserved .zv-stat-value {
+  color: var(--zv-status-reserved-fg);
+}
+
+.zv-stat-card--pending {
+  background: var(--zv-status-pending-bg);
+  border-color: var(--zv-status-pending-border);
+}
+.zv-stat-card--pending .zv-stat-label {
+  color: var(--zv-status-pending-accent);
+}
+.zv-stat-card--pending .zv-stat-value {
+  color: var(--zv-status-pending-fg);
+}
+
+.zv-stat-card--completed {
+  background: var(--zv-status-completed-bg);
+  border-color: var(--zv-status-completed-border);
+}
+.zv-stat-card--completed .zv-stat-label {
+  color: var(--zv-status-completed-accent);
+}
+.zv-stat-card--completed .zv-stat-value {
+  color: var(--zv-status-completed-fg);
+}
+
+.zv-stat-card--expired {
+  background: var(--zv-status-expired-bg);
+  border-color: var(--zv-status-expired-border);
+}
+.zv-stat-card--expired .zv-stat-label {
+  color: var(--zv-status-expired-accent);
+}
+.zv-stat-card--expired .zv-stat-value {
+  color: var(--zv-status-expired-fg);
+}
+
+.zv-stat-card--rejected {
+  background: var(--zv-status-rejected-bg);
+  border-color: var(--zv-status-rejected-border);
+}
+.zv-stat-card--rejected .zv-stat-label {
+  color: var(--zv-status-rejected-accent);
+}
+.zv-stat-card--rejected .zv-stat-value {
+  color: var(--zv-status-rejected-fg);
+}
+
+/* -----------------------------------------------------------
+ * Status pill — matches the stat-card palette so the same
+ * status reads identically in a card, in a chip, or anywhere
+ * else we need a compact label.
+ * --------------------------------------------------------- */
+.zv-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--zv-status-neutral-bg);
+  border: 1px solid var(--zv-status-neutral-border);
+  color: var(--zv-status-neutral-fg);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.zv-status-pill--reserved {
+  background: var(--zv-status-reserved-bg);
+  border-color: var(--zv-status-reserved-border);
+  color: var(--zv-status-reserved-fg);
+}
+.zv-status-pill--pending {
+  background: var(--zv-status-pending-bg);
+  border-color: var(--zv-status-pending-border);
+  color: var(--zv-status-pending-fg);
+}
+.zv-status-pill--completed {
+  background: var(--zv-status-completed-bg);
+  border-color: var(--zv-status-completed-border);
+  color: var(--zv-status-completed-fg);
+}
+.zv-status-pill--expired {
+  background: var(--zv-status-expired-bg);
+  border-color: var(--zv-status-expired-border);
+  color: var(--zv-status-expired-fg);
+}
+.zv-status-pill--rejected {
+  background: var(--zv-status-rejected-bg);
+  border-color: var(--zv-status-rejected-border);
+  color: var(--zv-status-rejected-fg);
+}
+
+/* -----------------------------------------------------------
+ * Admin user cell (name + email + phone in one table cell)
+ * --------------------------------------------------------- */
+.zv-user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px 0;
+}
+
+.zv-user-name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--mat-sys-on-surface);
+}
+
+.zv-user-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.zv-user-sub mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  opacity: 0.75;
+}
+
+.zv-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}

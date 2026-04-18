@@ -1,0 +1,45 @@
+/**
+ * Tailwind v4 integration for this Angular + Angular Material app.
+ *
+ * We deliberately skip Tailwind's `preflight` (the aggressive CSS reset):
+ *   - Angular Material already resets + styles everything it owns.
+ *   - Preflight's `* { margin: 0; padding: 0 }`, `h1-h6 { font-size: inherit }`,
+ *     `svg { display: block }`, and `button { border-radius: 0 }` rules fight
+ *     with Material and cause overlapping/squashed layouts.
+ *
+ * We keep Tailwind's `theme` (design tokens -> CSS vars) and `utilities` layers,
+ * which give us the `class="grid gap-3 rounded-zv-lg ..."` goodies with zero
+ * global-reset side effects.
+ */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./app/**/*.{html,ts}";
+@source "./**/*.html";
+
+/**
+ * Project design tokens exposed to Tailwind v4 as theme values.
+ * Usage examples:
+ *   class="bg-brand text-white"
+ *   class="shadow-zv-md rounded-zv-lg"
+ */
+@theme {
+  --color-brand: #7c3aed;
+  --color-brand-soft: #6d5efc;
+  --color-brand-deep: #2563eb;
+  --color-admin: #0f172a;
+
+  --radius-zv-sm: 8px;
+  --radius-zv-md: 12px;
+  --radius-zv-lg: 16px;
+  --radius-zv-xl: 24px;
+
+  --shadow-zv-sm: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-zv-md: 0 4px 10px -2px rgba(16, 24, 40, 0.06),
+    0 2px 6px -1px rgba(16, 24, 40, 0.04);
+  --shadow-zv-lg: 0 20px 40px -12px rgba(16, 24, 40, 0.18),
+    0 8px 20px -8px rgba(16, 24, 40, 0.08);
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

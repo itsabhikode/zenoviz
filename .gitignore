@@ -1,13 +1,33 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
 build/
 dist/
 wheels/
 *.egg-info
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Virtual environments
-.venv
+# Runtime data / secrets
+backend/data/payment_proofs/*
+!backend/data/payment_proofs/.gitkeep
+backend/.env
+backend/*.db
+backend/*.db-journal
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/coverage/
+frontend/.nx/cache/
+
+# OS / editors
+.DS_Store
+.idea/
+*.swp
 
 # Git worktrees
 .worktrees/
