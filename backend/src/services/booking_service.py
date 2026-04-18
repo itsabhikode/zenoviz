@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from src.config.app_settings import AppSettings
+from src.repositories.storage_repository import AbstractStorageRepository
 from src.domain.study_pricing import PricingConfigSnapshot, compute_stored_breakdown
 from src.domain.study_room_rules import (
     AccessType,
@@ -97,9 +98,15 @@ def _has_conflict(
 
 
 class BookingService:
-    def __init__(self, repo: AbstractStudyRepository, settings: AppSettings) -> None:
+    def __init__(
+        self,
+        repo: AbstractStudyRepository,
+        settings: AppSettings,
+        storage: AbstractStorageRepository,
+    ) -> None:
         self._repo = repo
         self._settings = settings
+        self._storage = storage
 
     def _validate_dates(self, start: date, end: date) -> int:
         if end < start:
@@ -371,12 +378,8 @@ class BookingService:
         if booking.reserved_until is not None and _utcnow() > _as_utc_aware(booking.reserved_until):
             raise ValueError("Reservation has expired")
 
-        upload_dir = Path(self._settings.payment_upload_dir)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        stored = upload_dir / f"{booking_id}{ext}"
-        stored.write_bytes(data)
-
-        booking.payment_proof_path = str(stored.resolve())
+        stored_path = self._storage.save_payment_proof(booking_id, ext, data)
+        booking.payment_proof_path = stored_path
         booking.status = BookingStatus.PAYMENT_PENDING.value
         booking.reserved_until = None
         booking.updated_at = _utcnow()
@@ -544,12 +547,7 @@ class BookingService:
         if ext not in (".png", ".jpg", ".jpeg", ".webp"):
             raise ValueError("Only png, jpg, jpeg, webp images are allowed")
 
-        qr_dir = Path(self._settings.payment_qr_dir)
-        qr_dir.mkdir(parents=True, exist_ok=True)
-        stored_name = f"qr{ext}"
-        stored_path = qr_dir / stored_name
-        stored_path.write_bytes(data)
-
+        stored_name = self._storage.save_payment_qr(ext, data)
         row = PaymentSettings(
             id=uuid.uuid4(),
             upi_vpa=None,
@@ -566,10 +564,10 @@ class BookingService:
         row = await self._repo.get_payment_settings()
         if row is None or not row.qr_filename:
             return None
-        path = Path(self._settings.payment_qr_dir) / row.qr_filename
-        if not path.exists():
+        data = self._storage.read_payment_qr(row.qr_filename)
+        if data is None:
             return None
-        return path.read_bytes(), (row.qr_content_type or "application/octet-stream")
+        return data, (row.qr_content_type or "application/octet-stream")
 
 
 _MONEY_Q = Decimal("0.01")

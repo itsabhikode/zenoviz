@@ -8,13 +8,16 @@ from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.base import AbstractCognitoClient
 from src.clients.impl.cognito import CognitoClient
 from src.config.app_settings import AppSettings
 from src.db.session import get_session
 from src.domain.user import CurrentUser
+from src.repositories.impl.local_storage_repository import LocalStorageRepository
 from src.repositories.impl.role_repository_sqlalchemy import SqlAlchemyRoleRepository
 from src.repositories.impl.study_repository_sqlalchemy import SqlAlchemyStudyRepository
 from src.repositories.role_repository import AbstractRoleRepository
+from src.repositories.storage_repository import AbstractStorageRepository
 from src.services.auth_service import AuthService
 from src.services.booking_service import BookingService
 from src.services.role_service import RoleService
@@ -43,24 +46,32 @@ def get_cognito_settings() -> CognitoSettings:
 
 
 # ---------------------------------------------------------------------------
-# JWKS cache (module-level; replaced in tests via patch)
+# JWKS cache — encapsulated in a class to avoid global mutable state
 # ---------------------------------------------------------------------------
 
-_jwks_cache: dict[str, Any] | None = None
+
+class JWKSCache:
+    """Lazily fetches and caches the Cognito JWKS document.
+
+    Calling ``invalidate()`` forces a re-fetch on the next ``get()`` call,
+    which is used by ``get_current_user`` to recover from key-rotation events.
+    """
+
+    def __init__(self) -> None:
+        self._cache: dict[str, Any] | None = None
+
+    def get(self, jwks_url: str) -> dict[str, Any]:
+        if self._cache is None:
+            response = httpx.get(jwks_url)
+            response.raise_for_status()
+            self._cache = response.json()
+        return self._cache
+
+    def invalidate(self) -> None:
+        self._cache = None
 
 
-def _fetch_jwks() -> dict[str, Any]:
-    settings = get_cognito_settings()
-    response = httpx.get(settings.cognito_jwks_url)
-    response.raise_for_status()
-    return response.json()
-
-
-def _get_jwks() -> dict[str, Any]:
-    global _jwks_cache
-    if _jwks_cache is None:
-        _jwks_cache = _fetch_jwks()
-    return _jwks_cache
+_jwks_cache = JWKSCache()
 
 
 def _decode_token(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
@@ -97,7 +108,8 @@ def get_current_user(
         )
 
     token = credentials.credentials
-    jwks = _get_jwks()
+    settings = get_cognito_settings()
+    jwks = _jwks_cache.get(settings.cognito_jwks_url)
 
     try:
         payload = _decode_token(token, jwks)
@@ -108,9 +120,8 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     except JWTError:
-        global _jwks_cache
-        new_jwks = _fetch_jwks()
-        _jwks_cache = new_jwks
+        _jwks_cache.invalidate()
+        new_jwks = _jwks_cache.get(settings.cognito_jwks_url)
         try:
             payload = _decode_token(token, new_jwks)
         except ExpiredSignatureError:
@@ -129,7 +140,7 @@ def get_current_user(
     return CurrentUser(user_id=payload["sub"], email=payload.get("email", ""))
 
 
-def get_cognito_client() -> CognitoClient:
+def get_cognito_client() -> AbstractCognitoClient:
     settings = get_cognito_settings()
     return CognitoClient(
         user_pool_id=settings.cognito_user_pool_id,
@@ -158,11 +169,19 @@ def get_study_repo(session: AsyncSession = Depends(get_session)) -> SqlAlchemySt
     return SqlAlchemyStudyRepository(session)
 
 
+def get_storage_repo(settings: AppSettings = Depends(get_app_settings)) -> AbstractStorageRepository:
+    return LocalStorageRepository(
+        upload_dir=settings.payment_upload_dir,
+        qr_dir=settings.payment_qr_dir,
+    )
+
+
 def get_booking_service(
     repo: SqlAlchemyStudyRepository = Depends(get_study_repo),
     settings: AppSettings = Depends(get_app_settings),
+    storage: AbstractStorageRepository = Depends(get_storage_repo),
 ) -> BookingService:
-    return BookingService(repo, settings)
+    return BookingService(repo, settings, storage)
 
 
 # ---------------------------------------------------------------------------
