@@ -8,15 +8,85 @@ import {
 } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-interface Cell {
+interface Seat {
   id: number;
-  row: string;
-  col: number;
+  x: number;
+  y: number;
 }
 
-const ROWS = 5;
-const COLS = 13;
-const ROW_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
+const SEAT_W = 22;
+const SEAT_H = 20;
+/** Container dimensions derived from the furthest seat coordinate + seat size + padding. */
+const GRID_WIDTH = 360;
+const GRID_HEIGHT = 500;
+
+const SEAT_POSITIONS: Seat[] = [
+  { id: 1, x: 111.52, y: 76.21 },
+  { id: 2, x: 136.52, y: 76.21 },
+  { id: 3, x: 161.52, y: 76.21 },
+  { id: 4, x: 211.52, y: 76.21 },
+  { id: 5, x: 236.52, y: 76.21 },
+  { id: 6, x: 111.52, y: 101.21 },
+  { id: 7, x: 136.52, y: 101.21 },
+  { id: 8, x: 161.52, y: 101.21 },
+  { id: 9, x: 211.52, y: 101.21 },
+  { id: 10, x: 236.52, y: 101.21 },
+  { id: 11, x: 111.52, y: 151.21 },
+  { id: 12, x: 136.52, y: 151.21 },
+  { id: 13, x: 186.52, y: 151.21 },
+  { id: 14, x: 211.52, y: 151.21 },
+  { id: 15, x: 271.52, y: 151.21 },
+  { id: 16, x: 296.52, y: 151.21 },
+  { id: 17, x: 111.52, y: 176.21 },
+  { id: 18, x: 136.52, y: 176.21 },
+  { id: 19, x: 186.52, y: 176.21 },
+  { id: 20, x: 211.52, y: 176.21 },
+  { id: 21, x: 271.52, y: 176.21 },
+  { id: 22, x: 296.52, y: 176.21 },
+  { id: 23, x: 111.52, y: 201.21 },
+  { id: 24, x: 136.52, y: 201.21 },
+  { id: 25, x: 186.52, y: 201.21 },
+  { id: 26, x: 211.52, y: 201.21 },
+  { id: 27, x: 158.59, y: 225.28 },
+  { id: 28, x: 185.83, y: 225.28 },
+  { id: 29, x: 225.83, y: 225.28 },
+  { id: 30, x: 275.83, y: 225.28 },
+  { id: 31, x: 300.83, y: 225.28 },
+  { id: 32, x: 185.92, y: 251.21 },
+  { id: 33, x: 225.92, y: 251.21 },
+  { id: 34, x: 275.91, y: 251.21 },
+  { id: 35, x: 300.91, y: 251.21 },
+  { id: 36, x: 185.92, y: 276.21 },
+  { id: 37, x: 225.92, y: 276.21 },
+  { id: 38, x: 275.91, y: 276.21 },
+  { id: 39, x: 300.91, y: 276.21 },
+  { id: 40, x: 271.62, y: 126.65 },
+  { id: 41, x: 296.61, y: 126.04 },
+  { id: 42, x: 210.92, y: 321.21 },
+  { id: 43, x: 235.92, y: 321.21 },
+  { id: 44, x: 285.91, y: 321.21 },
+  { id: 45, x: 310.91, y: 321.21 },
+  { id: 46, x: 210.92, y: 346.21 },
+  { id: 47, x: 235.92, y: 346.21 },
+  { id: 48, x: 285.91, y: 346.21 },
+  { id: 49, x: 310.91, y: 346.21 },
+  { id: 50, x: 210.92, y: 371.21 },
+  { id: 51, x: 235.92, y: 371.21 },
+  { id: 52, x: 285.91, y: 371.21 },
+  { id: 53, x: 310.91, y: 371.21 },
+  { id: 54, x: 210.83, y: 395.55 },
+  { id: 55, x: 235.83, y: 395.55 },
+  { id: 56, x: 285.83, y: 395.55 },
+  { id: 57, x: 310.83, y: 395.55 },
+  { id: 58, x: 210.83, y: 420.55 },
+  { id: 59, x: 235.83, y: 420.55 },
+  { id: 60, x: 285.83, y: 420.55 },
+  { id: 61, x: 310.83, y: 420.55 },
+  { id: 62, x: 210.83, y: 455.55 },
+  { id: 63, x: 235.83, y: 455.55 },
+  { id: 64, x: 285.83, y: 445.55 },
+  { id: 65, x: 310.83, y: 445.55 },
+];
 
 @Component({
   selector: 'zv-seat-grid',
@@ -25,35 +95,32 @@ const ROW_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
   imports: [CommonModule, MatTooltipModule],
   template: `
     <div class="seat-grid">
-      <div class="screen-bar">
-        <span>ENTRANCE</span>
-      </div>
+      <div
+        class="grid-container"
+        role="listbox"
+        [attr.aria-label]="'Seat selector'"
+        [style.width.px]="GRID_WIDTH"
+        [style.height.px]="GRID_HEIGHT"
+      >
+        <div class="screen-bar"><span>ENTRANCE</span></div>
 
-      <div class="grid-wrap" role="listbox" [attr.aria-label]="'Seat selector'">
-        @for (row of rows; track row.label) {
-          <div class="grid-row">
-            <span class="row-label">{{ row.label }}</span>
-            @for (cell of row.cells; track cell.id) {
-              <button
-                type="button"
-                class="seat"
-                role="option"
-                [class.unavailable]="unavailableSet().has(cell.id)"
-                [class.selected]="selected() === cell.id"
-                [disabled]="unavailableSet().has(cell.id) || disabled()"
-                [attr.aria-selected]="selected() === cell.id"
-                [matTooltip]="tooltipFor(cell)"
-                matTooltipPosition="above"
-                (click)="pick(cell.id)"
-              >
-                {{ cell.id }}
-              </button>
-              @if (shouldInsertAisle(cell.col)) {
-                <span class="aisle" aria-hidden="true"></span>
-              }
-            }
-            <span class="row-label">{{ row.label }}</span>
-          </div>
+        @for (seat of seats; track seat.id) {
+          <button
+            type="button"
+            class="seat"
+            role="option"
+            [style.left.px]="seat.x"
+            [style.top.px]="seat.y"
+            [class.unavailable]="unavailableSet().has(seat.id)"
+            [class.selected]="selected() === seat.id"
+            [disabled]="unavailableSet().has(seat.id) || disabled()"
+            [attr.aria-selected]="selected() === seat.id"
+            [matTooltip]="tooltipFor(seat)"
+            matTooltipPosition="above"
+            (click)="pick(seat.id)"
+          >
+            {{ seat.id }}
+          </button>
         }
       </div>
 
@@ -75,56 +142,43 @@ const ROW_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
         align-items: center;
         gap: 16px;
         padding: 20px 8px 8px;
+        overflow-x: hidden;
+      }
+      .grid-container {
+        position: relative;
+        overflow: visible;
+        transform-origin: top center;
+        flex-shrink: 0;
       }
       .screen-bar {
-        width: min(560px, 100%);
+        position: absolute;
+        top: 296px;
+        left: 111.52px;
+        width: 74px;
         text-align: center;
-        font-size: 11px;
-        letter-spacing: 3px;
+        font-size: 10px;
+        letter-spacing: 1px;
         font-weight: 600;
         color: #64748b;
-        padding: 10px 0 6px;
-        background: linear-gradient(
-          to bottom,
-          rgba(124, 58, 237, 0.15),
-          rgba(124, 58, 237, 0)
-        );
-        border-top: 2px solid rgba(124, 58, 237, 0.5);
-        border-radius: 60% 60% 0 0 / 18px 18px 0 0;
-        box-shadow: 0 6px 10px -8px rgba(124, 58, 237, 0.55);
-      }
-      .grid-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .grid-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .row-label {
-        width: 18px;
-        text-align: center;
-        font-size: 11px;
-        font-weight: 600;
-        color: #94a3b8;
-        font-variant-numeric: tabular-nums;
-      }
-      .aisle {
-        display: inline-block;
-        width: 16px;
+        padding: 4px 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        background: rgba(124, 58, 237, 0.08);
+        border: 1px solid rgba(124, 58, 237, 0.35);
+        border-radius: 4px;
+        box-shadow: 0 1px 4px -2px rgba(124, 58, 237, 0.4);
       }
       .seat {
         all: unset;
         box-sizing: border-box;
-        width: 34px;
-        height: 34px;
-        border-radius: 8px 8px 4px 4px;
+        position: absolute;
+        width: ${SEAT_W}px;
+        height: ${SEAT_H}px;
+        border-radius: 6px 6px 3px 3px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font: 600 11px/1 "Inter", system-ui, sans-serif;
+        font: 600 10px/1 "Inter", system-ui, sans-serif;
         font-variant-numeric: tabular-nums;
         color: #334155;
         background: #e2e8f0;
@@ -198,22 +252,25 @@ const ROW_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
         );
       }
 
-      @media (max-width: 640px) {
-        .seat {
-          width: 26px;
-          height: 26px;
-          font-size: 10px;
-          border-radius: 6px 6px 3px 3px;
+      /* Scale the entire fixed-coordinate grid to fit smaller screens.
+         margin-bottom compensates for the height no longer consumed after scaling
+         (transform does not affect layout flow). Formula: 500px * (scale - 1). */
+      @media (max-width: 480px) {
+        .grid-container {
+          transform: scale(0.85);
+          margin-bottom: -75px;
         }
-        .aisle {
-          width: 10px;
+      }
+      @media (max-width: 380px) {
+        .grid-container {
+          transform: scale(0.75);
+          margin-bottom: -125px;
         }
-        .grid-row {
-          gap: 4px;
-        }
-        .row-label {
-          width: 14px;
-          font-size: 10px;
+      }
+      @media (max-width: 320px) {
+        .grid-container {
+          transform: scale(0.65);
+          margin-bottom: -175px;
         }
       }
     `,
@@ -226,28 +283,19 @@ export class SeatGridComponent {
 
   readonly selectedChange = output<number>();
 
-  /** 5 rows of 13 seats each = 65. Rendered in a classic auditorium layout. */
-  readonly rows = ROW_LABELS.map((label, r) => ({
-    label,
-    cells: Array.from<unknown, Cell>({ length: COLS }, (_, c) => ({
-      id: r * COLS + c + 1,
-      row: label,
-      col: c + 1,
-    })),
-  }));
+  /** 65-seat-aisle pattern, north stage. Each seat placed at its absolute (x, y) pixel coordinate. */
+  readonly seats: readonly Seat[] = SEAT_POSITIONS;
+
+  readonly GRID_WIDTH = GRID_WIDTH;
+  readonly GRID_HEIGHT = GRID_HEIGHT;
 
   readonly unavailableSet = computed(() => new Set(this.unavailable()));
 
-  /** Aisles after col 4 and col 9 to create three sections like a theater. */
-  shouldInsertAisle(col: number): boolean {
-    return col === 4 || col === 9;
-  }
-
-  tooltipFor(cell: Cell): string {
-    if (this.unavailableSet().has(cell.id)) {
-      return `Seat ${cell.id} (${cell.row}${cell.col}) · Booked`;
+  tooltipFor(seat: Seat): string {
+    if (this.unavailableSet().has(seat.id)) {
+      return `Seat ${seat.id} · Booked`;
     }
-    return `Seat ${cell.id} (${cell.row}${cell.col})`;
+    return `Seat ${seat.id}`;
   }
 
   pick(id: number): void {
