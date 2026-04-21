@@ -30,3 +30,12 @@ class AppSettings(BaseSettings):
     If unset and ``S3_UPLOADS_BUCKET`` matches the directory-bucket name pattern
     (``*--{azId}--x-s3``), the client uses the matching ``s3express-…`` endpoint automatically.
     """
+
+    payment_qr_public_base_url: str | None = None
+    """HTTPS URL prefix for the uploads prefix (no trailing slash).
+
+    When set and a QR exists, payment settings responses include ``qr_public_url`` built as
+    ``{payment_qr_public_base_url}/payment-qr/{qr_filename}``, matching S3 keys under
+    ``{S3_UPLOADS_PREFIX}/payment-qr/``. Use the bucket URL form that matches your public ACL
+    or bucket policy (virtual-hosted style, website endpoint, or CloudFront origin path).
+    """

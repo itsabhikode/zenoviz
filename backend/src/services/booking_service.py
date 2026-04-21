@@ -711,8 +711,22 @@ def booking_to_response(b: Booking) -> dict[str, Any]:
     }
 
 
+def _payment_qr_public_url(
+    settings: AppSettings | None,
+    row: PaymentSettings | None,
+) -> str | None:
+    if settings is None or row is None or not row.qr_filename:
+        return None
+    base = (settings.payment_qr_public_base_url or "").strip().rstrip("/")
+    if not base:
+        return None
+    return f"{base}/payment-qr/{row.qr_filename}"
+
+
 def payment_settings_to_response(
     row: PaymentSettings | None,
+    *,
+    settings: AppSettings | None = None,
 ) -> PaymentSettingsResponse:
     if row is None:
         return PaymentSettingsResponse(
@@ -721,6 +735,7 @@ def payment_settings_to_response(
             instructions=None,
             has_qr=False,
             qr_content_type=None,
+            qr_public_url=None,
             updated_at=None,
         )
     return PaymentSettingsResponse(
@@ -729,6 +744,7 @@ def payment_settings_to_response(
         instructions=row.instructions,
         has_qr=bool(row.qr_filename),
         qr_content_type=row.qr_content_type,
+        qr_public_url=_payment_qr_public_url(settings, row),
         updated_at=row.updated_at,
     )
 

@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import Response
 
 from src.clients.base import AbstractCognitoClient, CognitoUserSummary
+from src.config.app_settings import AppSettings
 from src.dependencies import (
+    get_app_settings,
     get_booking_service,
     get_cognito_client,
     get_current_user,
@@ -211,9 +213,10 @@ async def get_pricing(
 async def get_admin_payment_settings(
     _: Annotated[None, Depends(require_admin)],
     svc: Annotated[BookingService, Depends(get_booking_service)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
 ) -> PaymentSettingsResponse:
     row = await svc.get_payment_settings()
-    return payment_settings_to_response(row)
+    return payment_settings_to_response(row, settings=settings)
 
 
 @router.put("/payment-settings", response_model=PaymentSettingsResponse)
@@ -222,10 +225,11 @@ async def put_payment_settings(
     user: Annotated[CurrentUser, Depends(get_current_user)],
     _: Annotated[None, Depends(require_admin)],
     svc: Annotated[BookingService, Depends(get_booking_service)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
 ) -> PaymentSettingsResponse:
     try:
         row = await svc.update_payment_settings(body, user.user_id)
-        return payment_settings_to_response(row)
+        return payment_settings_to_response(row, settings=settings)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -235,6 +239,7 @@ async def upload_payment_qr(
     user: Annotated[CurrentUser, Depends(get_current_user)],
     _: Annotated[None, Depends(require_admin)],
     svc: Annotated[BookingService, Depends(get_booking_service)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
     file: UploadFile = File(...),
 ) -> PaymentSettingsResponse:
     try:
@@ -245,6 +250,6 @@ async def upload_payment_qr(
             user_id=user.user_id,
             content_type=file.content_type,
         )
-        return payment_settings_to_response(row)
+        return payment_settings_to_response(row, settings=settings)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

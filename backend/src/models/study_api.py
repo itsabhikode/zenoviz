@@ -169,6 +169,7 @@ class PaymentSettingsResponse(BaseModel):
     instructions: str | None
     has_qr: bool
     qr_content_type: str | None
+    qr_public_url: str | None = None
     updated_at: datetime | None
 
 

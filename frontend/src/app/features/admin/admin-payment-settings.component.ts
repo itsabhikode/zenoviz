@@ -155,8 +155,7 @@ export class AdminPaymentSettingsComponent implements OnInit, OnDestroy {
       next: (s) => {
         this.settings.set(s);
         this.loading.set(false);
-        if (s.has_qr) this.loadQr();
-        else this.revokeQr();
+        this.applyQrFromSettings(s);
       },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
@@ -178,7 +177,7 @@ export class AdminPaymentSettingsComponent implements OnInit, OnDestroy {
       next: (s) => {
         this.settings.set(s);
         this.uploading.set(false);
-        this.loadQr();
+        this.applyQrFromSettings(s);
         this.snack.open('Payment QR updated', 'Dismiss', { duration: 3000 });
       },
       error: (err: HttpErrorResponse) => {
@@ -190,7 +189,20 @@ export class AdminPaymentSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadQr(): void {
+  private applyQrFromSettings(s: PaymentSettingsResponse): void {
+    this.revokeQr();
+    if (!s.has_qr) return;
+    const pub = s.qr_public_url?.trim();
+    if (pub) {
+      const sep = pub.includes('?') ? '&' : '?';
+      const bust = s.updated_at ? `${sep}v=${encodeURIComponent(s.updated_at)}` : '';
+      this.qrUrl.set(pub + bust);
+      return;
+    }
+    this.loadQrBlob();
+  }
+
+  private loadQrBlob(): void {
     this.api.paymentQrBlob().subscribe({
       next: (blob) => {
         this.revokeQr();
@@ -202,7 +214,7 @@ export class AdminPaymentSettingsComponent implements OnInit, OnDestroy {
 
   private revokeQr(): void {
     const url = this.qrUrl();
-    if (url) URL.revokeObjectURL(url);
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.qrUrl.set(null);
   }
 }

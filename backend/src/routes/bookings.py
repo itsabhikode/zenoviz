@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 
-from src.dependencies import get_booking_service, get_current_user
+from src.config.app_settings import AppSettings
+from src.dependencies import get_app_settings, get_booking_service, get_current_user
 from src.domain.user import CurrentUser
 from src.models.study_api import (
     AvailabilityCheckRequest,
@@ -121,9 +122,10 @@ async def get_booking(
 async def get_payment_settings(
     _: Annotated[CurrentUser, Depends(get_current_user)],
     svc: Annotated[BookingService, Depends(get_booking_service)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
 ) -> PaymentSettingsResponse:
     row = await svc.get_payment_settings()
-    return payment_settings_to_response(row)
+    return payment_settings_to_response(row, settings=settings)
 
 
 @router.get("/payment-settings/qr")

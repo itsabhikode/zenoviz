@@ -592,13 +592,26 @@ export class MyBookingsComponent implements OnInit, OnDestroy {
     this.api.paymentSettings().subscribe({
       next: (s) => {
         this.settings.set(s);
-        if (s.has_qr) this.loadQr();
+        this.applyQrFromSettings(s);
       },
       error: () => void 0,
     });
   }
 
-  private loadQr(): void {
+  private applyQrFromSettings(s: PaymentSettingsResponse): void {
+    this.revokeQr();
+    if (!s.has_qr) return;
+    const pub = s.qr_public_url?.trim();
+    if (pub) {
+      const sep = pub.includes('?') ? '&' : '?';
+      const bust = s.updated_at ? `${sep}v=${encodeURIComponent(s.updated_at)}` : '';
+      this.qrUrl.set(pub + bust);
+      return;
+    }
+    this.loadQrBlob();
+  }
+
+  private loadQrBlob(): void {
     this.api.paymentQrBlob().subscribe({
       next: (blob) => {
         this.revokeQr();
@@ -610,7 +623,7 @@ export class MyBookingsComponent implements OnInit, OnDestroy {
 
   private revokeQr(): void {
     const url = this.qrUrl();
-    if (url) URL.revokeObjectURL(url);
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     this.qrUrl.set(null);
   }
 

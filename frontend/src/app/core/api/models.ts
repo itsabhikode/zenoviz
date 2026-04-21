@@ -176,6 +176,8 @@ export interface PaymentSettingsResponse {
   instructions: string | null;
   has_qr: boolean;
   qr_content_type: string | null;
+  /** When set, use as image src; otherwise fetch QR bytes from the API. */
+  qr_public_url?: string | null;
   updated_at: string | null;
 }
 
