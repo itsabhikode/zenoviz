@@ -76,6 +76,30 @@ def test_availability_then_booking(study_client: TestClient) -> None:
     assert Decimal(b["final_price"]) > 0
 
 
+def test_second_booking_rejected_when_reserved(study_client: TestClient) -> None:
+    start, end = _dates()
+    payload_base = {
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "access_type": "timeslot",
+        "start_time": "09:00",
+        "end_time": "12:00",
+    }
+    r1 = study_client.post(
+        "/study-room/bookings",
+        json={**payload_base, "seat_id": 6},
+    )
+    assert r1.status_code == 201, r1.text
+
+    r2 = study_client.post(
+        "/study-room/bookings",
+        json={**payload_base, "seat_id": 7},
+    )
+    assert r2.status_code == 400, r2.text
+    detail = r2.json().get("detail", "")
+    assert "active booking" in detail.lower()
+
+
 def test_anytime_blocks_any_timeslot(study_client: TestClient) -> None:
     start, end = _dates()
     r1 = study_client.post(

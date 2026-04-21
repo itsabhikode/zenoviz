@@ -107,6 +107,10 @@ import { AuthService } from '../../core/api/auth.service';
                 }
               </mat-form-field>
 
+              <div class="forgot-row">
+                <a routerLink="/forgot-password">Forgot password?</a>
+              </div>
+
               @if (errorMsg()) {
                 <div class="error-banner">{{ errorMsg() }}</div>
               }
@@ -137,6 +141,9 @@ import { AuthService } from '../../core/api/auth.service';
       }
       .auth-shell {
         min-height: 100vh;
+        min-height: 100dvh;
+        max-width: 100%;
+        overflow-x: clip;
         display: grid;
         grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
       }
@@ -236,7 +243,13 @@ import { AuthService } from '../../core/api/auth.service';
       .card-side {
         display: grid;
         place-items: center;
-        padding: 32px 24px;
+        padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+      @media (min-width: 901px) {
+        .card-side {
+          padding: 32px 24px;
+        }
       }
       .auth-card-wrap {
         width: 100%;
@@ -271,6 +284,19 @@ import { AuthService } from '../../core/api/auth.service';
         flex-direction: column;
         gap: 4px;
         padding: 20px 28px 28px;
+      }
+      .forgot-row {
+        text-align: right;
+        margin: -4px 0 4px;
+      }
+      .forgot-row a {
+        font-size: 13px;
+        color: var(--mat-sys-primary);
+        font-weight: 500;
+        text-decoration: none;
+      }
+      .forgot-row a:hover {
+        text-decoration: underline;
       }
       .submit-btn {
         height: 48px;

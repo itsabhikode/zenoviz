@@ -1,11 +1,11 @@
-"""Role management admin API: grant, revoke, list, self-demotion guard."""
+"""Role management admin API: grant, revoke, list, self-demotion guard (Cognito groups)."""
 from __future__ import annotations
 
 from collections.abc import Iterator
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock
 
 from src.dependencies import (
     get_cognito_client,
@@ -22,7 +22,32 @@ ADMIN_EMAIL = "admin@example.com"
 
 @pytest.fixture()
 def fake_cognito() -> AsyncMock:
+    membership: dict[str, set[str]] = {}
+
+    async def add_user(uid: str, gn: str) -> None:
+        membership.setdefault(uid, set()).add(gn)
+
+    async def remove_user(uid: str, gn: str) -> None:
+        if uid in membership:
+            membership[uid].discard(gn)
+
+    async def list_groups(uid: str) -> list[str]:
+        return sorted(membership.get(uid, set()))
+
+    async def list_in_group(
+        gn: str,
+        *,
+        limit: int = 60,
+        pagination_token: str | None = None,
+    ) -> tuple[list[str], str | None]:
+        users = sorted(uid for uid, grps in membership.items() if gn in grps)
+        return users, None
+
     client = AsyncMock()
+    client.admin_add_user_to_group = AsyncMock(side_effect=add_user)
+    client.admin_remove_user_from_group = AsyncMock(side_effect=remove_user)
+    client.admin_list_groups_for_user = AsyncMock(side_effect=list_groups)
+    client.admin_list_users_in_group = AsyncMock(side_effect=list_in_group)
     client.resolve_sub_by_email = AsyncMock(return_value="resolved-sub-xyz")
     return client
 
@@ -48,7 +73,6 @@ def test_grant_by_user_id(admin_client: TestClient) -> None:
     body = r.json()
     assert body == {"user_id": "target-sub", "role": "admin", "changed": True}
 
-    # idempotent
     r2 = admin_client.post(
         "/admin/roles/grant", json={"user_id": "target-sub", "role": "admin"}
     )
@@ -72,7 +96,7 @@ def test_grant_requires_exactly_one_target(admin_client: TestClient) -> None:
         "/admin/roles/grant",
         json={"user_id": "a", "email": "b@example.com", "role": "admin"},
     )
-    assert both.status_code == 422  # pydantic model_validator fails
+    assert both.status_code == 422
 
     neither = admin_client.post("/admin/roles/grant", json={"role": "admin"})
     assert neither.status_code == 422
@@ -122,12 +146,8 @@ def test_cannot_revoke_own_admin_role(admin_client: TestClient) -> None:
 
 
 def test_list_user_roles_and_list_role_members(admin_client: TestClient) -> None:
-    admin_client.post(
-        "/admin/roles/grant", json={"user_id": "u1", "role": "admin"}
-    )
-    admin_client.post(
-        "/admin/roles/grant", json={"user_id": "u2", "role": "admin"}
-    )
+    admin_client.post("/admin/roles/grant", json={"user_id": "u1", "role": "admin"})
+    admin_client.post("/admin/roles/grant", json={"user_id": "u2", "role": "admin"})
 
     r = admin_client.get("/admin/roles/users/u1")
     assert r.status_code == 200

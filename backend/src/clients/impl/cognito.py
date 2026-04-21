@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 
 from src.clients.base import (
     AbstractCognitoClient,
+    ForgotPasswordOutcome,
     CognitoRegisterResult,
     CognitoUserPage,
     CognitoUserSummary,
@@ -17,10 +18,26 @@ logger = logging.getLogger(__name__)
 
 
 class CognitoClient(AbstractCognitoClient):
-    def __init__(self, user_pool_id: str, app_client_id: str, region: str) -> None:
+    def __init__(
+        self,
+        user_pool_id: str,
+        app_client_id: str,
+        region: str,
+        *,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        aws_session_token: str | None = None,
+    ) -> None:
         self._user_pool_id = user_pool_id
         self._app_client_id = app_client_id
-        self._boto_client = boto3.client("cognito-idp", region_name=region)
+        session_kw: dict[str, Any] = {"region_name": region}
+        if aws_access_key_id and aws_secret_access_key:
+            session_kw["aws_access_key_id"] = aws_access_key_id
+            session_kw["aws_secret_access_key"] = aws_secret_access_key
+            if aws_session_token:
+                session_kw["aws_session_token"] = aws_session_token
+        session = boto3.Session(**session_kw)
+        self._boto_client = session.client("cognito-idp")
 
     async def register(
         self,
@@ -98,6 +115,68 @@ class CognitoClient(AbstractCognitoClient):
             "refresh_token": auth_result["RefreshToken"],
         }
 
+    async def forgot_password(self, username: str) -> ForgotPasswordOutcome:
+        try:
+            response = await asyncio.to_thread(
+                self._boto_client.forgot_password,
+                ClientId=self._app_client_id,
+                Username=username,
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code in ("UserNotFoundException", "ResourceNotFoundException"):
+                return ForgotPasswordOutcome(code_sent=False)
+            if code == "InvalidParameterException":
+                return ForgotPasswordOutcome(code_sent=False)
+            if code == "LimitExceededException":
+                raise ValueError(
+                    "Too many reset attempts for this account; try again later."
+                ) from exc
+            if code == "TooManyRequestsException":
+                raise ValueError("Too many requests; try again later.") from exc
+            raise
+
+        details = response.get("CodeDeliveryDetails") or {}
+        return ForgotPasswordOutcome(
+            code_sent=True,
+            verification_destination=details.get("Destination"),
+            delivery_medium=details.get("DeliveryMedium"),
+        )
+
+    async def confirm_forgot_password(
+        self,
+        username: str,
+        confirmation_code: str,
+        new_password: str,
+    ) -> None:
+        try:
+            await asyncio.to_thread(
+                self._boto_client.confirm_forgot_password,
+                ClientId=self._app_client_id,
+                Username=username,
+                ConfirmationCode=confirmation_code,
+                Password=new_password,
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code == "CodeMismatchException":
+                raise ValueError("Invalid verification code") from exc
+            if code == "ExpiredCodeException":
+                raise ValueError(
+                    "Verification code has expired; request a new reset link."
+                ) from exc
+            if code == "InvalidPasswordException":
+                raise ValueError(
+                    f"Password does not meet policy: {exc.response['Error']['Message']}"
+                ) from exc
+            if code == "InvalidParameterException":
+                raise ValueError(exc.response["Error"]["Message"]) from exc
+            if code == "LimitExceededException":
+                raise ValueError("Too many attempts; try again later.") from exc
+            if code == "NotAuthorizedException":
+                raise ValueError(exc.response["Error"]["Message"]) from exc
+            raise
+
     async def logout(self, access_token: str) -> None:
         await asyncio.to_thread(
             self._boto_client.global_sign_out,
@@ -174,6 +253,75 @@ class CognitoClient(AbstractCognitoClient):
                 return None
             raise
         return _parse_admin_get_user(response)
+
+    async def admin_add_user_to_group(self, user_id: str, group_name: str) -> None:
+        try:
+            await asyncio.to_thread(
+                self._boto_client.admin_add_user_to_group,
+                UserPoolId=self._user_pool_id,
+                Username=user_id,
+                GroupName=group_name,
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code == "UserNotFoundException":
+                raise LookupError(f"Cognito user '{user_id}' not found") from exc
+            raise
+
+    async def admin_remove_user_from_group(self, user_id: str, group_name: str) -> None:
+        try:
+            await asyncio.to_thread(
+                self._boto_client.admin_remove_user_from_group,
+                UserPoolId=self._user_pool_id,
+                Username=user_id,
+                GroupName=group_name,
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code == "UserNotFoundException":
+                raise LookupError(f"Cognito user '{user_id}' not found") from exc
+            raise
+
+    async def admin_list_groups_for_user(self, user_id: str) -> list[str]:
+        try:
+            response = await asyncio.to_thread(
+                self._boto_client.admin_list_groups_for_user,
+                UserPoolId=self._user_pool_id,
+                Username=user_id,
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code == "UserNotFoundException":
+                raise LookupError(f"Cognito user '{user_id}' not found") from exc
+            raise
+        groups = response.get("Groups") or []
+        return [str(g.get("GroupName", "")) for g in groups if g.get("GroupName")]
+
+    async def admin_list_users_in_group(
+        self,
+        group_name: str,
+        *,
+        limit: int = 60,
+        pagination_token: str | None = None,
+    ) -> tuple[list[str], str | None]:
+        kwargs: dict[str, Any] = {
+            "UserPoolId": self._user_pool_id,
+            "GroupName": group_name,
+            "Limit": max(1, min(limit, 60)),
+        }
+        if pagination_token:
+            kwargs["NextToken"] = pagination_token
+        response = await asyncio.to_thread(
+            self._boto_client.list_users_in_group,
+            **kwargs,
+        )
+        users = response.get("Users") or []
+        subs: list[str] = []
+        for item in users:
+            un = item.get("Username")
+            if un:
+                subs.append(str(un))
+        return subs, response.get("NextToken")
 
 
 def _attrs_to_dict(attrs: list[dict[str, str]] | None) -> dict[str, str]:

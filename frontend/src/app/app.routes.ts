@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { bookRouteGuard } from './core/booking/book-route.guard';
 import { adminGuard, authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
@@ -12,6 +13,13 @@ export const routes: Routes = [
     path: 'register',
     loadComponent: () =>
       import('./features/auth/register.component').then((m) => m.RegisterComponent),
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./features/auth/forgot-password.component').then(
+        (m) => m.ForgotPasswordComponent,
+      ),
   },
 
   {
@@ -30,6 +38,7 @@ export const routes: Routes = [
       },
       {
         path: 'book',
+        canActivate: [bookRouteGuard],
         loadComponent: () =>
           import('./features/bookings/create-booking.component').then(
             (m) => m.CreateBookingComponent,
@@ -71,6 +80,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/admin-pricing.component').then(
             (m) => m.AdminPricingComponent,
+          ),
+      },
+      {
+        path: 'seats',
+        loadComponent: () =>
+          import('./features/admin/admin-seats.component').then(
+            (m) => m.AdminSeatsComponent,
           ),
       },
       {

@@ -1,7 +1,11 @@
 """Unit tests for AuthService using FakeCognitoClient."""
 import pytest
 
-from src.clients.base import AbstractCognitoClient, CognitoRegisterResult
+from src.clients.base import (
+    AbstractCognitoClient,
+    CognitoRegisterResult,
+    ForgotPasswordOutcome,
+)
 from src.models.auth import LoginRequest, RefreshRequest, RegisterRequest
 from src.services.auth_service import AuthService
 
@@ -26,6 +30,8 @@ class FakeCognitoClient(AbstractCognitoClient):
         self.login_error: Exception | None = None
         self.refresh_tokens: dict[str, str] = {"access_token": "new_fake_access"}
         self.refresh_error: Exception | None = None
+        self.register_delivery_medium = "EMAIL"
+        self.register_destination = "u***@example.com"
 
     async def register(
         self,
@@ -52,8 +58,8 @@ class FakeCognitoClient(AbstractCognitoClient):
         return CognitoRegisterResult(
             user_sub="00000000-0000-0000-0000-000000000099",
             user_confirmed=False,
-            verification_destination="u***@example.com",
-            delivery_medium="EMAIL",
+            verification_destination=self.register_destination,
+            delivery_medium=self.register_delivery_medium,
         )
 
     async def login(self, email: str, password: str) -> dict[str, str]:
@@ -81,6 +87,39 @@ class FakeCognitoClient(AbstractCognitoClient):
 
     async def get_user_by_sub(self, user_id: str):  # type: ignore[override]
         return None
+
+    async def admin_add_user_to_group(self, user_id: str, group_name: str) -> None:
+        pass
+
+    async def admin_remove_user_from_group(self, user_id: str, group_name: str) -> None:
+        pass
+
+    async def admin_list_groups_for_user(self, user_id: str) -> list[str]:
+        return []
+
+    async def admin_list_users_in_group(
+        self,
+        group_name: str,
+        *,
+        limit: int = 60,
+        pagination_token: str | None = None,
+    ) -> tuple[list[str], str | None]:
+        return [], None
+
+    async def forgot_password(self, username: str) -> ForgotPasswordOutcome:
+        return ForgotPasswordOutcome(
+            code_sent=True,
+            verification_destination="u***@example.com",
+            delivery_medium="EMAIL",
+        )
+
+    async def confirm_forgot_password(
+        self,
+        username: str,
+        confirmation_code: str,
+        new_password: str,
+    ) -> None:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +149,7 @@ async def test_register_success_returns_message() -> None:
         )
     )
     assert "successful" in response.message.lower()
+    assert "ses" in response.message.lower()
     assert response.user_sub == "00000000-0000-0000-0000-000000000099"
     assert response.user_confirmed is False
     assert response.verification_destination == "u***@example.com"
@@ -124,6 +164,25 @@ async def test_register_success_returns_message() -> None:
             "gender": "female",
         }
     ]
+
+
+async def test_register_success_sms_hint_mentions_sns_not_ses() -> None:
+    svc, fake = _service()
+    fake.register_delivery_medium = "SMS"
+    fake.register_destination = "+*********2772"
+    response = await svc.register(
+        RegisterRequest(
+            email="u@example.com",
+            password="Pass1!",
+            given_name="Ada",
+            family_name="Lovelace",
+            phone_number="+911234567892",
+            gender="female",
+        )
+    )
+    assert "sns" in response.message.lower()
+    assert "ses" not in response.message.lower()
+    assert response.delivery_medium == "SMS"
 
 
 async def test_register_propagates_value_error() -> None:

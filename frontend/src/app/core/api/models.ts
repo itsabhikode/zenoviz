@@ -24,6 +24,16 @@ export interface RegisterResponse {
   delivery_medium: string | null;
 }
 
+export interface ForgotPasswordResponse {
+  message: string;
+  verification_destination: string | null;
+  delivery_medium: string | null;
+}
+
+export interface ApiMessageResponse {
+  message: string;
+}
+
 export interface MeResponse {
   user_id: string;
   email: string;
@@ -92,6 +102,8 @@ export interface SeatsAvailabilityRequest {
 export interface SeatsAvailabilityResponse {
   total_seats: number;
   unavailable_seat_ids: number[];
+  /** Seats turned off by admin (subset of unavailable when calendar is open). */
+  disabled_seat_ids?: number[];
 }
 
 /** Shape matches backend `BookingResponse`. */
@@ -147,6 +159,16 @@ export interface PricingConfigResponse {
 }
 
 export interface UpdatePricingRequest extends PricingConfigResponse {}
+
+export interface SeatResponse {
+  id: number;
+  label: string;
+  is_enabled: boolean;
+}
+
+export interface UpdateSeatEnabledRequest {
+  is_enabled: boolean;
+}
 
 export interface PaymentSettingsResponse {
   upi_vpa: string | null;

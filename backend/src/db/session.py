@@ -47,6 +47,12 @@ _ADDITIVE_COLUMN_PATCHES: list[tuple[str, str, str]] = [
         "paid_amount",
         "ALTER TABLE bookings ADD COLUMN paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0",
     ),
+    (
+        "seats",
+        "is_enabled",
+        # Use TRUE not 1 — PostgreSQL rejects integer default on BOOLEAN columns.
+        "ALTER TABLE seats ADD COLUMN is_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+    ),
 ]
 
 

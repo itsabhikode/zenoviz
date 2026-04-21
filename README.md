@@ -77,7 +77,8 @@ Copy `backend/.env.example` and fill in:
 | `COGNITO_APP_CLIENT_ID` | Cognito App Client ID |
 | `COGNITO_REGION` | AWS region, e.g. `us-east-1` |
 | `COGNITO_JWKS_URL` | `https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json` |
-| `BOOTSTRAP_ADMINS` | Comma-separated Cognito emails or subs that receive the `admin` role on first login |
+| `COGNITO_ADMIN_GROUP` | Cognito group that maps to admin in the API (default `Admin`); add users to this group in Cognito or use `/admin/roles/grant` |
+| `S3_UPLOADS_BUCKET` | When set, payment proof and payment QR files are stored in S3 under `S3_UPLOADS_PREFIX` |
 | `PAYMENT_UPLOAD_DIR` | Directory for payment proof images (default: `./data/payment_proofs`) |
 | `PAYMENT_QR_DIR` | Directory for QR code images (default: `./data/payment_qr`) |
 

@@ -6,6 +6,8 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenStorage } from '../auth/token-storage';
 import {
+  ApiMessageResponse,
+  ForgotPasswordResponse,
   LoginTokens,
   MeResponse,
   RefreshTokenResponse,
@@ -52,6 +54,22 @@ export class AuthService {
 
   register(body: RegisterRequest): Observable<RegisterResponse> {
     return this.http.post<RegisterResponse>(`${this.base}/register`, body);
+  }
+
+  forgotPassword(email: string): Observable<ForgotPasswordResponse> {
+    return this.http.post<ForgotPasswordResponse>(`${this.base}/forgot-password`, { email });
+  }
+
+  confirmForgotPassword(
+    email: string,
+    confirmationCode: string,
+    newPassword: string,
+  ): Observable<ApiMessageResponse> {
+    return this.http.post<ApiMessageResponse>(`${this.base}/confirm-forgot-password`, {
+      email,
+      confirmation_code: confirmationCode,
+      new_password: newPassword,
+    });
   }
 
   logout(): void {

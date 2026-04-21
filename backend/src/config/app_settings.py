@@ -15,13 +15,18 @@ class AppSettings(BaseSettings):
     booking_expiry_interval_seconds: int = 60
     max_payment_proof_bytes: int = 5 * 1024 * 1024
 
-    bootstrap_admins: str = ""
-    """Comma-separated list of Cognito emails or subs that get the `admin`
-    role on their first authenticated request. Empty = no bootstrap."""
+    cognito_admin_group: str = "Admin"
+    """Cognito user pool group name that maps to API role `admin`."""
 
-    def bootstrap_admin_identities(self) -> frozenset[str]:
-        return frozenset(
-            part.strip().lower()
-            for part in self.bootstrap_admins.split(",")
-            if part.strip()
-        )
+    s3_uploads_bucket: str | None = None
+    """When set, payment proofs and QR images are stored in this S3 bucket."""
+
+    s3_uploads_prefix: str = "zenoviz"
+    """Key prefix inside the uploads bucket."""
+
+    s3_zonal_endpoint: str | None = None
+    """Optional override for S3 Express directory buckets (zonal API endpoint URL).
+
+    If unset and ``S3_UPLOADS_BUCKET`` matches the directory-bucket name pattern
+    (``*--{azId}--x-s3``), the client uses the matching ``s3express-…`` endpoint automatically.
+    """

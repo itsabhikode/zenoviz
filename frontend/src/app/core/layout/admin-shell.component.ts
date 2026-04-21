@@ -1,5 +1,7 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,12 +10,15 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { AuthService } from '../api/auth.service';
 
 interface NavItem {
   label: string;
+  /** Short label for bottom navigation on small screens */
+  short: string;
   icon: string;
   path: string;
 }
@@ -37,7 +42,13 @@ interface NavItem {
   ],
   template: `
     <mat-sidenav-container class="shell" autosize>
-      <mat-sidenav #drawer mode="side" opened class="sidenav">
+      <mat-sidenav
+        class="sidenav"
+        [mode]="isHandset() ? 'over' : 'side'"
+        [opened]="!isHandset() || drawerOpen()"
+        (openedChange)="onDrawerOpened($event)"
+        [fixedInViewport]="true"
+      >
         <div class="brand">
           <div class="brand-mark">
             <mat-icon>admin_panel_settings</mat-icon>
@@ -54,6 +65,7 @@ interface NavItem {
               [routerLink]="item.path"
               routerLinkActive="active"
               [routerLinkActiveOptions]="{ exact: false }"
+              (click)="closeDrawerOnNavigate()"
             >
               <mat-icon>{{ item.icon }}</mat-icon>
               <span>{{ item.label }}</span>
@@ -61,7 +73,7 @@ interface NavItem {
           }
         </nav>
         <div class="sidenav-footer">
-          <button class="exit-card" (click)="exitToApp()">
+          <button type="button" class="exit-card" (click)="exitToApp()">
             <mat-icon>exit_to_app</mat-icon>
             <div>
               <span class="exit-title">Exit console</span>
@@ -71,32 +83,38 @@ interface NavItem {
         </div>
       </mat-sidenav>
 
-      <mat-sidenav-content>
+      <mat-sidenav-content class="sidenav-content">
         <header class="topbar">
-          <button
-            mat-icon-button
-            (click)="drawer.toggle()"
-            aria-label="Toggle menu"
-            class="menu-btn"
-          >
-            <mat-icon>menu</mat-icon>
-          </button>
+          @if (isHandset()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="toggleDrawer()"
+              aria-label="Open menu"
+              class="menu-btn"
+            >
+              <mat-icon>menu</mat-icon>
+            </button>
+          }
           <div class="crumb">
             <span class="crumb-eyebrow">
               <mat-icon class="crumb-icon">admin_panel_settings</mat-icon>
-              Admin console
+              Admin
             </span>
             <h1 class="crumb-title">{{ pageTitle() }}</h1>
           </div>
           <span class="zv-spacer"></span>
 
-          <button mat-stroked-button (click)="exitToApp()" class="exit-btn">
-            <mat-icon>exit_to_app</mat-icon>
-            Exit
-          </button>
+          @if (!isHandset()) {
+            <button mat-stroked-button type="button" (click)="exitToApp()" class="exit-btn">
+              <mat-icon>exit_to_app</mat-icon>
+              Exit
+            </button>
+          }
 
           <button
             mat-icon-button
+            type="button"
             [matMenuTriggerFor]="userMenu"
             matTooltip="Account"
             aria-label="Account menu"
@@ -118,20 +136,39 @@ interface NavItem {
               </div>
             </div>
             <mat-divider />
-            <button mat-menu-item (click)="exitToApp()">
+            <button mat-menu-item type="button" (click)="exitToApp()">
               <mat-icon>exit_to_app</mat-icon>
               <span>Back to user app</span>
             </button>
-            <button mat-menu-item (click)="logout()">
+            <button mat-menu-item type="button" (click)="logout()">
               <mat-icon>logout</mat-icon>
               <span>Sign out</span>
             </button>
           </mat-menu>
         </header>
 
-        <main class="content">
+        <main class="content" [class.content--nav]="isHandset()">
           <router-outlet />
         </main>
+
+        @if (isHandset()) {
+          <nav class="bottom-nav" aria-label="Admin sections">
+            <div class="bottom-nav__scroll">
+              @for (item of nav; track item.path) {
+                <a
+                  class="bottom-nav__item"
+                  [routerLink]="item.path"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ exact: false }"
+                  (click)="closeDrawerOnNavigate()"
+                >
+                  <mat-icon class="bottom-nav__icon">{{ item.icon }}</mat-icon>
+                  <span class="bottom-nav__label">{{ item.short }}</span>
+                </a>
+              }
+            </div>
+          </nav>
+        }
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
@@ -140,14 +177,21 @@ interface NavItem {
       :host {
         display: block;
         height: 100vh;
+        height: 100dvh;
       }
       .shell {
         height: 100vh;
+        height: 100dvh;
         background: transparent;
       }
+      .sidenav-content {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
       .sidenav {
-        width: 260px;
-        padding: 20px 12px;
+        width: min(288px, 90vw);
+        padding: max(16px, env(safe-area-inset-top, 0px)) 12px 20px;
         background: var(--zv-gradient-admin);
         color: #e2e8f0;
         border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -200,14 +244,17 @@ interface NavItem {
         display: flex;
         align-items: center;
         gap: 12px;
-        height: 44px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 10px;
         color: rgba(248, 250, 252, 0.82);
         text-decoration: none;
         font-size: 14px;
         font-weight: 500;
-        transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          transform 0.1s ease;
       }
       .nav-item:hover {
         background: rgba(255, 255, 255, 0.06);
@@ -218,9 +265,9 @@ interface NavItem {
       }
       .nav-item mat-icon {
         color: rgba(248, 250, 252, 0.6);
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
       }
       .nav-item.active {
         background: var(--zv-gradient-brand);
@@ -267,37 +314,35 @@ interface NavItem {
         color: rgba(248, 250, 252, 0.55);
       }
       .topbar {
+        flex-shrink: 0;
         position: sticky;
         top: 0;
         z-index: 10;
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 14px 28px;
+        gap: 8px;
+        padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+          10px max(12px, env(safe-area-inset-left, 0px));
         background: rgba(15, 23, 42, 0.94);
         backdrop-filter: saturate(1.4) blur(14px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         color: #f8fafc;
       }
       .menu-btn {
-        display: none;
+        flex-shrink: 0;
         color: #f8fafc;
-      }
-      @media (max-width: 900px) {
-        .menu-btn {
-          display: inline-flex;
-        }
       }
       .crumb {
         display: flex;
         flex-direction: column;
         line-height: 1.1;
+        min-width: 0;
       }
       .crumb-eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-size: 11px;
+        font-size: 10px;
         color: #c4b5fd;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -310,18 +355,23 @@ interface NavItem {
       }
       .crumb-title {
         margin: 2px 0 0 0;
-        font-size: 16px;
+        font-size: clamp(14px, 3.5vw, 16px);
         font-weight: 600;
         letter-spacing: -0.015em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .zv-spacer {
         flex: 1;
       }
       .exit-btn {
+        flex-shrink: 0;
         color: #f8fafc !important;
         border-color: rgba(255, 255, 255, 0.2) !important;
       }
       .avatar-btn {
+        flex-shrink: 0;
         background: rgba(255, 255, 255, 0.08);
         color: #f8fafc;
       }
@@ -377,7 +427,74 @@ interface NavItem {
         width: fit-content;
       }
       .content {
-        min-height: calc(100vh - 64px);
+        flex: 1;
+        min-height: 0;
+        overflow-x: clip;
+      }
+      .content--nav {
+        padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9;
+        background: rgba(15, 23, 42, 0.96);
+        backdrop-filter: saturate(1.2) blur(14px);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .bottom-nav__scroll {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 2px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        padding: 6px 8px;
+        min-height: calc(48px + env(safe-area-inset-bottom, 0px));
+      }
+      .bottom-nav__scroll::-webkit-scrollbar {
+        display: none;
+      }
+      .bottom-nav__item {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        min-width: 72px;
+        max-width: 96px;
+        padding: 6px 8px;
+        border-radius: 10px;
+        text-decoration: none;
+        color: rgba(226, 232, 240, 0.65);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-align: center;
+        line-height: 1.15;
+      }
+      .bottom-nav__item.active {
+        color: #fff;
+        background: rgba(124, 58, 237, 0.35);
+      }
+      .bottom-nav__icon {
+        font-size: 22px !important;
+        width: 22px !important;
+        height: 22px !important;
+      }
+      .bottom-nav__label {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
       }
     `,
   ],
@@ -385,17 +502,43 @@ interface NavItem {
 export class AdminShellComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly breakpoint = inject(BreakpointObserver);
+
+  readonly isHandset = toSignal(
+    this.breakpoint.observe('(max-width: 959px)').pipe(map((r) => r.matches)),
+    { initialValue: false },
+  );
+  readonly drawerOpen = signal(false);
 
   readonly nav: NavItem[] = [
-    { label: 'Users', icon: 'people', path: '/admin/users' },
-    { label: 'Roles', icon: 'admin_panel_settings', path: '/admin/roles' },
-    { label: 'All Bookings', icon: 'event_note', path: '/admin/bookings' },
-    { label: 'Pending Payments', icon: 'receipt_long', path: '/admin/payments' },
-    { label: 'Pricing', icon: 'payments', path: '/admin/pricing' },
-    { label: 'Payment QR', icon: 'qr_code_2', path: '/admin/payment-settings' },
+    { label: 'Users', short: 'Users', icon: 'people', path: '/admin/users' },
+    { label: 'Roles', short: 'Roles', icon: 'admin_panel_settings', path: '/admin/roles' },
+    { label: 'All Bookings', short: 'Bookings', icon: 'event_note', path: '/admin/bookings' },
+    {
+      label: 'Pending Payments',
+      short: 'Pending',
+      icon: 'receipt_long',
+      path: '/admin/payments',
+    },
+    { label: 'Pricing', short: 'Price', icon: 'payments', path: '/admin/pricing' },
+    { label: 'Seats', short: 'Seats', icon: 'event_seat', path: '/admin/seats' },
+    { label: 'Payment QR', short: 'QR', icon: 'qr_code_2', path: '/admin/payment-settings' },
   ];
 
   readonly pageTitle = signal('Overview');
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        if (this.isHandset()) {
+          this.drawerOpen.set(false);
+        }
+      });
+  }
 
   ngOnInit(): void {
     this.auth.me().subscribe({ error: () => void 0 });
@@ -403,6 +546,22 @@ export class AdminShellComponent implements OnInit {
       const match = this.nav.find((n) => this.router.url.startsWith(n.path));
       this.pageTitle.set(match ? match.label : 'Overview');
     });
+  }
+
+  toggleDrawer(): void {
+    this.drawerOpen.update((v) => !v);
+  }
+
+  onDrawerOpened(opened: boolean): void {
+    if (this.isHandset()) {
+      this.drawerOpen.set(opened);
+    }
+  }
+
+  closeDrawerOnNavigate(): void {
+    if (this.isHandset()) {
+      this.drawerOpen.set(false);
+    }
   }
 
   exitToApp(): void {

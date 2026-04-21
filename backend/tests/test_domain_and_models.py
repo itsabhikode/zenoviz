@@ -21,6 +21,7 @@ def test_current_user_holds_id_and_email() -> None:
     user = CurrentUser(user_id="abc-123", email="user@example.com")
     assert user.user_id == "abc-123"
     assert user.email == "user@example.com"
+    assert user.groups == frozenset()
 
 
 def test_current_user_is_immutable() -> None:

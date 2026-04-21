@@ -25,6 +25,7 @@ from src.models.orm.study_room import (
     BookingStatus,
     PaymentSettings,
     PricingConfig,
+    Seat,
     SeatBookingDay,
 )
 from src.models.study_api import (
@@ -82,6 +83,36 @@ def _breakdown_response(b: dict[str, Any]) -> PriceBreakdownResponse:
 
 
 TOTAL_SEATS = 65
+
+
+def _user_blocks_new_booking(bookings: list[Booking], today: date) -> bool:
+    """Whether the user already holds their single allowed active reservation."""
+
+    for b in bookings:
+        if b.status in (
+            BookingStatus.RESERVED.value,
+            BookingStatus.PAYMENT_PENDING.value,
+        ):
+            return True
+        if (
+            b.status == BookingStatus.COMPLETED.value
+            and b.end_date >= today
+        ):
+            return True
+    return False
+
+
+def _seat_must_allow_booking(seat: Seat, *, previous_seat_id: int | None) -> None:
+    """Reject new bookings or seat changes onto a disabled seat.
+
+    Existing bookings may stay on a seat after it is disabled (`previous_seat_id`).
+    """
+
+    if seat.is_enabled:
+        return
+    if previous_seat_id is not None and seat.id == previous_seat_id:
+        return
+    raise ValueError("Seat is not available for booking")
 
 
 def _has_conflict(
@@ -160,10 +191,12 @@ class BookingService:
         for sid, by_date in per_seat.items():
             if _has_conflict(start_min, end_min, by_date, dates):
                 unavailable.append(sid)
-        unavailable.sort()
+        disabled_ids = await self._repo.list_disabled_seat_ids()
+        merged = sorted(set(unavailable) | set(disabled_ids))
         return SeatsAvailabilityResponse(
             total_seats=TOTAL_SEATS,
-            unavailable_seat_ids=unavailable,
+            unavailable_seat_ids=merged,
+            disabled_seat_ids=disabled_ids,
         )
 
     async def check_availability(self, body: AvailabilityCheckRequest) -> AvailabilityCheckResponse:
@@ -180,6 +213,26 @@ class BookingService:
             access_type=access,
             cfg=snap,
         )
+        seat_row = await self._repo.get_seat(body.seat_id)
+        if seat_row is None:
+            return AvailabilityCheckResponse(
+                available=False,
+                reason="Invalid seat_id",
+                duration_days=days,
+                category=category.value,
+                final_price=str(final),
+                breakdown=_breakdown_response(breakdown_dict),
+            )
+        if not seat_row.is_enabled:
+            return AvailabilityCheckResponse(
+                available=False,
+                reason="Seat is not available for booking",
+                duration_days=days,
+                category=category.value,
+                final_price=str(final),
+                breakdown=_breakdown_response(breakdown_dict),
+            )
+
         dates = iter_booking_dates(body.start_date, body.end_date)
         booked = await self._repo.load_booked_intervals(body.seat_id, dates)
         conflict = _has_conflict(start_min, end_min, booked, dates)
@@ -194,6 +247,13 @@ class BookingService:
         )
 
     async def create_booking(self, user_id: str, body: CreateBookingRequest) -> Booking:
+        existing_rows = await self._repo.list_user_bookings(user_id)
+        if _user_blocks_new_booking(existing_rows, _today_utc()):
+            raise ValueError(
+                "You already have an active booking. Open My bookings and use Edit — "
+                "only one reservation is allowed at a time."
+            )
+
         access = self._parse_access(body.access_type)
         days = self._validate_dates(body.start_date, body.end_date)
         category = category_for_duration(days)
@@ -214,6 +274,7 @@ class BookingService:
         seat = await self._repo.lock_seat_row(body.seat_id)
         if seat is None:
             raise ValueError("Invalid seat_id")
+        _seat_must_allow_booking(seat, previous_seat_id=None)
 
         booked = await self._repo.load_booked_intervals(body.seat_id, dates)
         if _has_conflict(start_min, end_min, booked, dates):
@@ -299,6 +360,7 @@ class BookingService:
         seat = await self._repo.lock_seat_row(body.seat_id)
         if seat is None:
             raise ValueError("Invalid seat_id")
+        _seat_must_allow_booking(seat, previous_seat_id=booking.seat_id)
 
         dates = iter_booking_dates(body.start_date, body.end_date)
         booked = await self._repo.load_booked_intervals(
@@ -511,6 +573,15 @@ class BookingService:
             raise ValueError("No active pricing configuration")
         return row
 
+    async def list_seats_admin(self) -> list[Seat]:
+        return await self._repo.list_all_seats()
+
+    async def set_seat_enabled_admin(self, seat_id: int, enabled: bool) -> Seat:
+        row = await self._repo.set_seat_enabled(seat_id, enabled)
+        if row is None:
+            raise ValueError("Invalid seat_id")
+        return row
+
     async def get_payment_settings(self) -> PaymentSettings | None:
         return await self._repo.get_payment_settings()
 
@@ -568,6 +639,28 @@ class BookingService:
         if data is None:
             return None
         return data, (row.qr_content_type or "application/octet-stream")
+
+    @staticmethod
+    def _content_type_for_stored_image(stored: str) -> str:
+        ext = Path(stored).suffix.lower()
+        if ext in (".jpg", ".jpeg"):
+            return "image/jpeg"
+        if ext == ".png":
+            return "image/png"
+        if ext == ".webp":
+            return "image/webp"
+        return "application/octet-stream"
+
+    async def read_payment_proof_for_admin(
+        self, booking_id: UUID
+    ) -> tuple[bytes, str] | None:
+        booking = await self._repo.get_booking(booking_id)
+        if booking is None or not booking.payment_proof_path:
+            return None
+        data = self._storage.read_payment_proof(booking.payment_proof_path)
+        if data is None:
+            return None
+        return data, self._content_type_for_stored_image(booking.payment_proof_path)
 
 
 _MONEY_Q = Decimal("0.01")

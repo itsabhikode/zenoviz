@@ -13,6 +13,9 @@ from src.dependencies import (
 )
 from src.domain.user import CurrentUser
 from src.models.auth import (
+    ConfirmForgotPasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
@@ -42,6 +45,29 @@ async def register(
         if "already" in msg.lower():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg) from exc
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg) from exc
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> ForgotPasswordResponse:
+    """Always returns 200 with a generic message when email is unknown (no enumeration)."""
+    try:
+        return await auth_service.forgot_password(request)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/confirm-forgot-password", response_model=MessageResponse)
+async def confirm_forgot_password(
+    request: ConfirmForgotPasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    try:
+        return await auth_service.confirm_forgot_password(request)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/login")

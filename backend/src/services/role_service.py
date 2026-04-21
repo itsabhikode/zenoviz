@@ -3,22 +3,22 @@ from __future__ import annotations
 from typing import Literal
 
 from src.clients.base import AbstractCognitoClient
-from src.repositories.role_repository import AbstractRoleRepository
+from src.config.app_settings import AppSettings
 
 RoleName = Literal["admin"]
 ALLOWED_ROLES: frozenset[str] = frozenset({"admin"})
 
 
 class RoleService:
-    """Thin orchestration layer over the role repository + Cognito lookup."""
+    """Grant/revoke admin via Cognito user groups (no database roles)."""
 
     def __init__(
         self,
-        repo: AbstractRoleRepository,
         cognito: AbstractCognitoClient,
+        settings: AppSettings,
     ) -> None:
-        self._repo = repo
         self._cognito = cognito
+        self._settings = settings
 
     def _validate_role(self, role: str) -> None:
         if role not in ALLOWED_ROLES:
@@ -26,8 +26,14 @@ class RoleService:
                 f"Unknown role '{role}'. Allowed: {sorted(ALLOWED_ROLES)}"
             )
 
+    def _cognito_group_for_api_role(self, role: str) -> str:
+        self._validate_role(role)
+        return self._settings.cognito_admin_group
+
     async def _resolve_target_user_id(
-        self, user_id: str | None, email: str | None
+        self,
+        user_id: str | None,
+        email: str | None,
     ) -> str:
         if (user_id is None) == (email is None):
             raise ValueError("Exactly one of user_id or email must be provided")
@@ -46,10 +52,13 @@ class RoleService:
         user_id: str | None = None,
         email: str | None = None,
     ) -> tuple[str, bool]:
-        self._validate_role(role)
+        group = self._cognito_group_for_api_role(role)
         target = await self._resolve_target_user_id(user_id, email)
-        created = await self._repo.grant_role(target, role)
-        return target, created
+        existing = await self._cognito.admin_list_groups_for_user(target)
+        if group in existing:
+            return target, False
+        await self._cognito.admin_add_user_to_group(target, group)
+        return target, True
 
     async def revoke(
         self,
@@ -59,16 +68,34 @@ class RoleService:
         user_id: str | None = None,
         email: str | None = None,
     ) -> tuple[str, bool]:
-        self._validate_role(role)
+        group = self._cognito_group_for_api_role(role)
         target = await self._resolve_target_user_id(user_id, email)
         if role == "admin" and target == actor_user_id:
             raise PermissionError("Cannot revoke your own admin role")
-        removed = await self._repo.revoke_role(target, role)
-        return target, removed
+        existing = await self._cognito.admin_list_groups_for_user(target)
+        if group not in existing:
+            return target, False
+        await self._cognito.admin_remove_user_from_group(target, group)
+        return target, True
 
     async def list_user_roles(self, user_id: str) -> list[str]:
-        return sorted(await self._repo.list_roles_for_user(user_id))
+        groups = await self._cognito.admin_list_groups_for_user(user_id)
+        if self._settings.cognito_admin_group in groups:
+            return ["admin"]
+        return []
 
     async def list_users_with_role(self, role: str) -> list[str]:
         self._validate_role(role)
-        return await self._repo.list_users_with_role(role)
+        group = self._cognito_group_for_api_role(role)
+        user_ids: list[str] = []
+        token: str | None = None
+        while True:
+            batch, token = await self._cognito.admin_list_users_in_group(
+                group,
+                limit=60,
+                pagination_token=token,
+            )
+            user_ids.extend(batch)
+            if not token:
+                break
+        return sorted(set(user_ids))

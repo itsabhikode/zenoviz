@@ -112,6 +112,7 @@ const SEAT_POSITIONS: Seat[] = [
             [style.left.px]="seat.x"
             [style.top.px]="seat.y"
             [class.unavailable]="unavailableSet().has(seat.id)"
+            [class.admin-disabled]="adminDisabledSet().has(seat.id)"
             [class.selected]="selected() === seat.id"
             [disabled]="unavailableSet().has(seat.id) || disabled()"
             [attr.aria-selected]="selected() === seat.id"
@@ -128,6 +129,7 @@ const SEAT_POSITIONS: Seat[] = [
         <span class="chip"><span class="swatch available"></span>Available</span>
         <span class="chip"><span class="swatch selected"></span>Selected</span>
         <span class="chip"><span class="swatch unavailable"></span>Booked</span>
+        <span class="chip"><span class="swatch admin-disabled"></span>Disabled</span>
       </div>
     </div>
   `,
@@ -201,6 +203,20 @@ const SEAT_POSITIONS: Seat[] = [
         border-color: transparent;
         box-shadow: 0 4px 10px -4px rgba(109, 94, 252, 0.65);
       }
+      .seat.admin-disabled:not(.selected) {
+        background: repeating-linear-gradient(
+          -35deg,
+          #fff7ed,
+          #fff7ed 4px,
+          #fed7aa 4px,
+          #fed7aa 8px
+        );
+        color: #9a3412;
+        border-color: rgba(234, 88, 12, 0.35);
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
       .seat.unavailable,
       .seat:disabled {
         background: repeating-linear-gradient(
@@ -214,6 +230,16 @@ const SEAT_POSITIONS: Seat[] = [
         cursor: not-allowed;
         box-shadow: none;
         transform: none;
+      }
+      .seat.admin-disabled.unavailable:not(.selected) {
+        background: repeating-linear-gradient(
+          -35deg,
+          #fff7ed,
+          #fff7ed 4px,
+          #fed7aa 4px,
+          #fed7aa 8px
+        );
+        color: #9a3412;
       }
       .legend {
         display: flex;
@@ -251,6 +277,16 @@ const SEAT_POSITIONS: Seat[] = [
           #e2e8f0 8px
         );
       }
+      .swatch.admin-disabled {
+        background: repeating-linear-gradient(
+          -35deg,
+          #fff7ed,
+          #fff7ed 4px,
+          #fed7aa 4px,
+          #fed7aa 8px
+        );
+        border-color: rgba(234, 88, 12, 0.35);
+      }
 
       /* Scale the entire fixed-coordinate grid to fit smaller screens.
          margin-bottom compensates for the height no longer consumed after scaling
@@ -278,6 +314,8 @@ const SEAT_POSITIONS: Seat[] = [
 })
 export class SeatGridComponent {
   readonly unavailable = input<readonly number[]>([]);
+  /** Seats turned off by admin (may overlap `unavailable`). */
+  readonly adminDisabledIds = input<readonly number[]>([]);
   readonly selected = input<number | null>(null);
   readonly disabled = input<boolean>(false);
 
@@ -290,8 +328,12 @@ export class SeatGridComponent {
   readonly GRID_HEIGHT = GRID_HEIGHT;
 
   readonly unavailableSet = computed(() => new Set(this.unavailable()));
+  readonly adminDisabledSet = computed(() => new Set(this.adminDisabledIds()));
 
   tooltipFor(seat: Seat): string {
+    if (this.adminDisabledSet().has(seat.id)) {
+      return `Seat ${seat.id} · Disabled by admin`;
+    }
     if (this.unavailableSet().has(seat.id)) {
       return `Seat ${seat.id} · Booked`;
     }

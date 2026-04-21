@@ -113,7 +113,13 @@ import { AdminRolesService } from '../../core/api/admin-roles.service';
         flex-wrap: wrap;
       }
       .form mat-form-field {
-        min-width: 240px;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      @media (min-width: 520px) {
+        .form mat-form-field {
+          min-width: 220px;
+        }
       }
       .actions {
         display: flex;

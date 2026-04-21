@@ -14,9 +14,8 @@ from src.config.app_settings import AppSettings
 from src.db.session import get_session
 from src.domain.user import CurrentUser
 from src.repositories.impl.local_storage_repository import LocalStorageRepository
-from src.repositories.impl.role_repository_sqlalchemy import SqlAlchemyRoleRepository
+from src.repositories.impl.s3_storage_repository import S3StorageRepository
 from src.repositories.impl.study_repository_sqlalchemy import SqlAlchemyStudyRepository
-from src.repositories.role_repository import AbstractRoleRepository
 from src.repositories.storage_repository import AbstractStorageRepository
 from src.services.auth_service import AuthService
 from src.services.booking_service import BookingService
@@ -38,6 +37,11 @@ class CognitoSettings(BaseSettings):
     cognito_app_client_id: str
     cognito_region: str
     cognito_jwks_url: str
+
+    # Passed into boto3.Session so keys in `.env` work (boto does not read `.env` itself).
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    aws_session_token: str | None = None
 
 
 @lru_cache
@@ -137,7 +141,19 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    return CurrentUser(user_id=payload["sub"], email=payload.get("email", ""))
+    raw_groups = payload.get("cognito:groups")
+    if isinstance(raw_groups, str):
+        group_set = frozenset({raw_groups})
+    elif isinstance(raw_groups, list):
+        group_set = frozenset(str(g) for g in raw_groups)
+    else:
+        group_set = frozenset()
+
+    return CurrentUser(
+        user_id=payload["sub"],
+        email=payload.get("email", ""),
+        groups=group_set,
+    )
 
 
 def get_cognito_client() -> AbstractCognitoClient:
@@ -146,6 +162,9 @@ def get_cognito_client() -> AbstractCognitoClient:
         user_pool_id=settings.cognito_user_pool_id,
         app_client_id=settings.cognito_app_client_id,
         region=settings.cognito_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+        aws_session_token=settings.aws_session_token,
     )
 
 
@@ -169,7 +188,20 @@ def get_study_repo(session: AsyncSession = Depends(get_session)) -> SqlAlchemySt
     return SqlAlchemyStudyRepository(session)
 
 
-def get_storage_repo(settings: AppSettings = Depends(get_app_settings)) -> AbstractStorageRepository:
+def get_storage_repo(
+    settings: AppSettings = Depends(get_app_settings),
+    cognito_cfg: CognitoSettings = Depends(get_cognito_settings),
+) -> AbstractStorageRepository:
+    if settings.s3_uploads_bucket:
+        return S3StorageRepository(
+            bucket=settings.s3_uploads_bucket,
+            prefix=settings.s3_uploads_prefix,
+            region=cognito_cfg.cognito_region,
+            aws_access_key_id=cognito_cfg.aws_access_key_id,
+            aws_secret_access_key=cognito_cfg.aws_secret_access_key,
+            aws_session_token=cognito_cfg.aws_session_token,
+            zonal_endpoint_override=settings.s3_zonal_endpoint,
+        )
     return LocalStorageRepository(
         upload_dir=settings.payment_upload_dir,
         qr_dir=settings.payment_qr_dir,
@@ -185,46 +217,43 @@ def get_booking_service(
 
 
 # ---------------------------------------------------------------------------
-# RBAC
+# RBAC (admin from Cognito group only — no DB roles)
 # ---------------------------------------------------------------------------
 
 
-def get_role_repo(session: AsyncSession = Depends(get_session)) -> AbstractRoleRepository:
-    return SqlAlchemyRoleRepository(session)
+def _map_cognito_groups_to_roles(groups: frozenset[str], admin_group: str) -> frozenset[str]:
+    if admin_group in groups:
+        return frozenset({"admin"})
+    return frozenset()
 
 
 async def get_user_roles(
     user: CurrentUser = Depends(get_current_user),
-    repo: AbstractRoleRepository = Depends(get_role_repo),
     settings: AppSettings = Depends(get_app_settings),
 ) -> frozenset[str]:
-    roles = await repo.list_roles_for_user(user.user_id)
-    bootstrap = settings.bootstrap_admin_identities()
-    if bootstrap and "admin" not in roles:
-        candidates = {user.user_id.lower(), (user.email or "").lower()}
-        if candidates & bootstrap:
-            await repo.grant_role(user.user_id, "admin")
-            roles = roles | {"admin"}
-    return frozenset(roles)
+    return _map_cognito_groups_to_roles(user.groups, settings.cognito_admin_group)
 
 
-async def require_admin(roles: frozenset[str] = Depends(get_user_roles)) -> None:
-    if "admin" not in roles:
+async def require_admin(
+    user: CurrentUser = Depends(get_current_user),
+    settings: AppSettings = Depends(get_app_settings),
+) -> None:
+    if settings.cognito_admin_group not in user.groups:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail="Admin role required (Cognito group)",
         )
 
 
 def get_role_service(  # noqa: D401 - FastAPI dep factory, sync by design
-    repo: AbstractRoleRepository = Depends(get_role_repo),
     cognito: CognitoClient = Depends(get_cognito_client),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> RoleService:
-    return RoleService(repo=repo, cognito=cognito)
+    return RoleService(cognito=cognito, settings=settings)
 
 
 def get_user_admin_service(  # noqa: D401 - FastAPI dep factory, sync by design
     cognito: CognitoClient = Depends(get_cognito_client),
-    repo: AbstractRoleRepository = Depends(get_role_repo),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> UserAdminService:
-    return UserAdminService(cognito=cognito, role_repo=repo)
+    return UserAdminService(cognito=cognito, settings=settings)

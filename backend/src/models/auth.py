@@ -30,6 +30,22 @@ class RegisterRequest(BaseModel):
     )
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    verification_destination: str | None = None
+    delivery_medium: str | None = None
+
+
+class ConfirmForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    confirmation_code: str = Field(min_length=1, max_length=2048)
+    new_password: str = Field(min_length=1, max_length=2048)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

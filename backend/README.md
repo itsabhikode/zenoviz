@@ -27,7 +27,9 @@ Required environment variables:
 | `COGNITO_REGION` | AWS region (e.g. `us-east-1`) |
 | `COGNITO_JWKS_URL` | JWKS endpoint for token validation |
 | `DATABASE_URL` | async SQLAlchemy URL (`postgresql+asyncpg://...` or `sqlite+aiosqlite:///...`) |
-| `BOOTSTRAP_ADMINS` | comma-separated Cognito subs or emails that get the `admin` role on first login |
+| `COGNITO_ADMIN_GROUP` | Cognito group name that grants admin (`Admin` default); matches token claim `cognito:groups` |
+| `S3_UPLOADS_BUCKET` | optional; when set, payment proofs and QR images use S3 instead of local directories |
+| `S3_ZONAL_ENDPOINT` | optional; only if you must override the S3 Express zonal API URL (directory buckets auto-detect from the bucket name) |
 
 ## Running
 

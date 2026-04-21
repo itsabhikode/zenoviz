@@ -1,0 +1,44 @@
+---
+description: Backend — when to run OpenSpec (opsx) and Superpowers-equivalent workflow (brainstorm → TDD → verify)
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Backend: OpenSpec + Superpowers (per `CLAUDE.md`)
+
+This rule applies when **any file under `backend/`** is in scope. Follow the project constitution in the repo root `CLAUDE.md` and `.claude/CLAUDE.md`.
+
+## OpenSpec (CLI + change folders)
+
+- **Working directory**: run the `openspec` CLI from **`backend/`** (not repo root). Change folders live under **`backend/openspec/changes/<name>/`**.
+- **Skill files** (read and follow before automating):  
+  - `.claude/skills/openspec-propose/SKILL.md`  
+  - `.claude/skills/openspec-apply-change/SKILL.md`  
+  - `.claude/skills/openspec-archive-change/SKILL.md`  
+  - `.claude/skills/openspec-explore/SKILL.md` (explore / unclear requirements)
+
+### When to activate which step
+
+| Situation | Action |
+|-----------|--------|
+| **New backend feature**, new API behavior, schema/migration that changes contracts | **`/opsx:propose`** (or equivalent: `openspec new change …`, generate proposal/design/tasks per skill). **No implementation until the user approves** the proposal direction. |
+| User approved / tasks exist and asks to **implement** | **`/opsx:apply`** — follow **openspec-apply-change**: `openspec status`, `openspec instructions apply`, work **`tasks.md`** in order with TDD. |
+| Change is **fully implemented and merged** | **`/opsx:archive`** — follow **openspec-archive-change**. |
+| Requirements fuzzy | **`/opsx:explore`** or **openspec-explore** skill before proposing. |
+
+### Small / urgent fixes
+
+Purely mechanical edits (comments, typo in string, formatting) may skip OpenSpec **propose**, but **any behavior or contract change** still warrants a change record when it is non-trivial; use judgment and prefer propose when unsure.
+
+---
+
+## Superpowers (equivalent in Cursor)
+
+The repo references **Superpowers** skills (`brainstorming`, `test-driven-development`, `verification-before-completion`, **writing-plans**). In Cursor, treat them as **mandatory habits**:
+
+1. **Brainstorming** — Before edits, briefly surface options, risks, and the chosen approach (even for small refactors).
+2. **Test-driven development** — Add or adjust a **failing test first**, then implement, then refactor. No “skip tests” for convenience.
+3. **Writing-plans / execution** — For multi-step work, break down from **`tasks.md`** or, if present, **`docs/superpowers/plans/*.md`**, and execute task-by-task.
+4. **Verification-before-completion** — Run **`pytest`** (and any relevant checks) in `backend/` before stating the work is done.
+
+If the user uses Claude Code slash commands (**`/opsx:propose`**, **`/opsx:apply`**, **`/opsx:archive`**), mirror the same workflow here using the skills above.

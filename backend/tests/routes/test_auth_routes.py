@@ -6,7 +6,11 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.clients.base import AbstractCognitoClient, CognitoRegisterResult
+from src.clients.base import (
+    AbstractCognitoClient,
+    CognitoRegisterResult,
+    ForgotPasswordOutcome,
+)
 from src.main import app
 from src.dependencies import get_cognito_client, get_current_user
 from src.domain.user import CurrentUser
@@ -39,6 +43,13 @@ class FakeCognitoClient(AbstractCognitoClient):
         self.login_error: Exception | None = None
         self.refresh_tokens: dict[str, str] = {"access_token": "new_fake_access"}
         self.refresh_error: Exception | None = None
+        self.forgot_error: Exception | None = None
+        self.forgot_outcome = ForgotPasswordOutcome(
+            code_sent=True,
+            verification_destination="u***@example.com",
+            delivery_medium="EMAIL",
+        )
+        self.confirm_error: Exception | None = None
 
     async def register(
         self,
@@ -64,6 +75,20 @@ class FakeCognitoClient(AbstractCognitoClient):
             raise self.login_error
         return self.login_tokens
 
+    async def forgot_password(self, username: str) -> ForgotPasswordOutcome:
+        if self.forgot_error:
+            raise self.forgot_error
+        return self.forgot_outcome
+
+    async def confirm_forgot_password(
+        self,
+        username: str,
+        confirmation_code: str,
+        new_password: str,
+    ) -> None:
+        if self.confirm_error:
+            raise self.confirm_error
+
     async def logout(self, access_token: str) -> None:
         pass
 
@@ -82,6 +107,24 @@ class FakeCognitoClient(AbstractCognitoClient):
 
     async def get_user_by_sub(self, user_id: str):  # type: ignore[override]
         return None
+
+    async def admin_add_user_to_group(self, user_id: str, group_name: str) -> None:
+        pass
+
+    async def admin_remove_user_from_group(self, user_id: str, group_name: str) -> None:
+        pass
+
+    async def admin_list_groups_for_user(self, user_id: str) -> list[str]:
+        return []
+
+    async def admin_list_users_in_group(
+        self,
+        group_name: str,
+        *,
+        limit: int = 60,
+        pagination_token: str | None = None,
+    ) -> tuple[list[str], str | None]:
+        return [], None
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +265,54 @@ def test_refresh_invalid_token_returns_401(client: TestClient, fake_cognito: Fak
 def test_refresh_missing_field_returns_422(client: TestClient) -> None:
     resp = client.post("/auth/refresh", json={})
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+
+
+def test_forgot_password_success(client: TestClient) -> None:
+    resp = client.post("/auth/forgot-password", json={"email": "u@example.com"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "verification" in body["message"].lower()
+    assert body["delivery_medium"] == "EMAIL"
+
+
+def test_forgot_password_unknown_email_generic_message(
+    client: TestClient, fake_cognito: FakeCognitoClient
+) -> None:
+    fake_cognito.forgot_outcome = ForgotPasswordOutcome(code_sent=False)
+    resp = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+    assert resp.status_code == 200
+    assert "registered" in resp.json()["message"].lower()
+
+
+def test_confirm_forgot_password_success(client: TestClient) -> None:
+    resp = client.post(
+        "/auth/confirm-forgot-password",
+        json={
+            "email": "u@example.com",
+            "confirmation_code": "123456",
+            "new_password": "NewPass1!",
+        },
+    )
+    assert resp.status_code == 200
+    assert "updated" in resp.json()["message"].lower()
+
+
+def test_confirm_forgot_password_bad_code(client: TestClient, fake_cognito: FakeCognitoClient) -> None:
+    fake_cognito.confirm_error = ValueError("Invalid verification code")
+    resp = client.post(
+        "/auth/confirm-forgot-password",
+        json={
+            "email": "u@example.com",
+            "confirmation_code": "wrong",
+            "new_password": "NewPass1!",
+        },
+    )
+    assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------

@@ -125,6 +125,7 @@ const STATUS_OPTIONS: StatusOption[] = [
             <p>No bookings match the current filter.</p>
           </div>
         } @else {
+          <div class="zv-scroll-x table-scroll">
           <table mat-table [dataSource]="filtered()" class="full-width">
             <ng-container matColumnDef="user">
               <th mat-header-cell *matHeaderCellDef>User</th>
@@ -220,15 +221,15 @@ const STATUS_OPTIONS: StatusOption[] = [
                   </button>
                 }
                 @if (b.payment_proof_path) {
-                  <a
+                  <button
                     mat-icon-button
-                    [href]="proofUrl(b.payment_proof_path)"
-                    target="_blank"
-                    rel="noopener"
+                    type="button"
+                    (click)="viewPaymentProof(b.id)"
                     matTooltip="View payment proof"
+                    aria-label="View payment proof"
                   >
                     <mat-icon>receipt_long</mat-icon>
-                  </a>
+                  </button>
                 }
               </td>
             </ng-container>
@@ -236,6 +237,7 @@ const STATUS_OPTIONS: StatusOption[] = [
             <tr mat-header-row *matHeaderRowDef="columns"></tr>
             <tr mat-row *matRowDef="let row; columns: columns"></tr>
           </table>
+          </div>
         }
       </mat-card>
     </div>
@@ -247,17 +249,47 @@ const STATUS_OPTIONS: StatusOption[] = [
       }
       .toolbar {
         display: flex;
+        flex-direction: column;
         gap: 12px;
-        flex-wrap: wrap;
         margin-bottom: 12px;
+        width: 100%;
+        max-width: 100%;
+      }
+      @media (min-width: 640px) {
+        .toolbar {
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: flex-start;
+        }
       }
       .filter-field {
-        min-width: 200px;
+        width: 100%;
+        min-width: 0;
+      }
+      @media (min-width: 640px) {
+        .filter-field {
+          width: auto;
+          min-width: 160px;
+        }
       }
       .search-field {
-        min-width: 260px;
-        flex: 1;
-        max-width: 420px;
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      @media (min-width: 640px) {
+        .search-field {
+          min-width: 200px;
+          max-width: 420px;
+        }
+      }
+      .table-scroll {
+        margin: 0 -4px;
+      }
+      @media (min-width: 600px) {
+        .table-scroll {
+          margin: 0;
+        }
       }
       .empty {
         display: flex;
@@ -359,9 +391,19 @@ export class AdminBookingsComponent {
     return this.shortId(b.user_id);
   }
 
-  proofUrl(path: string): string {
-    if (path.startsWith('http')) return path;
-    return `${location.origin}${path}`;
+  viewPaymentProof(bookingId: string): void {
+    this.api.downloadPaymentProof(bookingId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.snack.open(err.error?.detail ?? 'Could not load payment proof', 'Dismiss', {
+          duration: 4000,
+        });
+      },
+    });
   }
 
   statusPillClass(status: string): string {

@@ -1,5 +1,13 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,9 +16,11 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { AuthService } from '../api/auth.service';
+import { UserBookingPolicyService } from '../booking/user-booking-policy.service';
 
 interface NavItem {
   label: string;
@@ -37,7 +47,14 @@ interface NavItem {
   ],
   template: `
     <mat-sidenav-container class="shell" autosize>
-      <mat-sidenav #drawer mode="side" opened class="sidenav">
+      <mat-sidenav
+        #drawer
+        class="sidenav"
+        [mode]="isHandset() ? 'over' : 'side'"
+        [opened]="!isHandset() || drawerOpen()"
+        (openedChange)="onDrawerOpened($event)"
+        [fixedInViewport]="true"
+      >
         <div class="brand">
           <div class="brand-mark">
             <mat-icon>event_seat</mat-icon>
@@ -48,12 +65,13 @@ interface NavItem {
           </div>
         </div>
         <nav class="nav">
-          @for (item of nav; track item.path) {
+          @for (item of navItems(); track item.path) {
             <a
               class="nav-item"
               [routerLink]="item.path"
               routerLinkActive="active"
               [routerLinkActiveOptions]="{ exact: false }"
+              (click)="closeDrawerOnNavigate()"
             >
               <mat-icon>{{ item.icon }}</mat-icon>
               <span>{{ item.label }}</span>
@@ -76,16 +94,19 @@ interface NavItem {
         </div>
       </mat-sidenav>
 
-      <mat-sidenav-content>
+      <mat-sidenav-content class="sidenav-content">
         <header class="topbar">
-          <button
-            mat-icon-button
-            (click)="drawer.toggle()"
-            aria-label="Toggle menu"
-            class="menu-btn"
-          >
-            <mat-icon>menu</mat-icon>
-          </button>
+          @if (isHandset()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="toggleDrawer()"
+              aria-label="Open menu"
+              class="menu-btn"
+            >
+              <mat-icon>menu</mat-icon>
+            </button>
+          }
           <div class="crumb">
             <span class="crumb-eyebrow">Zenoviz</span>
             <h1 class="crumb-title">{{ pageTitle() }}</h1>
@@ -94,6 +115,7 @@ interface NavItem {
 
           <button
             mat-icon-button
+            type="button"
             [matMenuTriggerFor]="userMenu"
             matTooltip="Account"
             aria-label="Account menu"
@@ -118,22 +140,39 @@ interface NavItem {
             </div>
             <mat-divider />
             @if (isAdmin()) {
-              <button mat-menu-item (click)="goToAdminConsole()">
+              <button mat-menu-item type="button" (click)="goToAdminConsole()">
                 <mat-icon>admin_panel_settings</mat-icon>
                 <span>Admin console</span>
               </button>
               <mat-divider />
             }
-            <button mat-menu-item (click)="logout()">
+            <button mat-menu-item type="button" (click)="logout()">
               <mat-icon>logout</mat-icon>
               <span>Sign out</span>
             </button>
           </mat-menu>
         </header>
 
-        <main class="content">
+        <main class="content" [class.content--nav]="isHandset()">
           <router-outlet />
         </main>
+
+        @if (isHandset()) {
+          <nav class="bottom-nav" aria-label="Primary">
+            @for (item of navItems(); track item.path) {
+              <a
+                class="bottom-nav__item"
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: false }"
+                (click)="closeDrawerOnNavigate()"
+              >
+                <mat-icon class="bottom-nav__icon">{{ item.icon }}</mat-icon>
+                <span class="bottom-nav__label">{{ item.label }}</span>
+              </a>
+            }
+          </nav>
+        }
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
@@ -142,20 +181,27 @@ interface NavItem {
       :host {
         display: block;
         height: 100vh;
+        height: 100dvh;
       }
       .shell {
         height: 100vh;
+        height: 100dvh;
         background: transparent;
       }
+      .sidenav-content {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
       .sidenav {
-        width: 260px;
-        padding: 20px 12px;
+        width: min(280px, 88vw);
+        padding: max(16px, env(safe-area-inset-top, 0px)) 12px 20px;
         background: linear-gradient(
           180deg,
-          rgba(255, 255, 255, 0.9) 0%,
-          rgba(250, 248, 255, 0.9) 100%
+          rgba(255, 255, 255, 0.94) 0%,
+          rgba(250, 248, 255, 0.94) 100%
         );
-        backdrop-filter: saturate(1.2) blur(10px);
+        backdrop-filter: saturate(1.2) blur(12px);
         border-right: 1px solid rgba(15, 23, 42, 0.06);
         display: flex;
         flex-direction: column;
@@ -205,7 +251,7 @@ interface NavItem {
         display: flex;
         align-items: center;
         gap: 12px;
-        height: 44px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 10px;
         color: var(--mat-sys-on-surface);
@@ -213,7 +259,10 @@ interface NavItem {
         font-size: 14px;
         font-weight: 500;
         letter-spacing: -0.005em;
-        transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          transform 0.1s ease;
       }
       .nav-item:hover {
         background: rgba(124, 58, 237, 0.06);
@@ -223,9 +272,9 @@ interface NavItem {
       }
       .nav-item mat-icon {
         color: var(--mat-sys-on-surface-variant);
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
       }
       .nav-item.active {
         background: var(--zv-gradient-brand);
@@ -271,32 +320,30 @@ interface NavItem {
         white-space: nowrap;
       }
       .topbar {
+        flex-shrink: 0;
         position: sticky;
         top: 0;
         z-index: 10;
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 14px 28px;
-        background: rgba(255, 255, 255, 0.75);
+        gap: 8px;
+        padding: max(10px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+          10px max(12px, env(safe-area-inset-left, 0px));
+        background: rgba(255, 255, 255, 0.82);
         backdrop-filter: saturate(1.4) blur(14px);
         border-bottom: 1px solid rgba(15, 23, 42, 0.06);
       }
       .menu-btn {
-        display: none;
-      }
-      @media (max-width: 900px) {
-        .menu-btn {
-          display: inline-flex;
-        }
+        flex-shrink: 0;
       }
       .crumb {
         display: flex;
         flex-direction: column;
         line-height: 1.1;
+        min-width: 0;
       }
       .crumb-eyebrow {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--mat-sys-on-surface-variant);
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -304,14 +351,18 @@ interface NavItem {
       }
       .crumb-title {
         margin: 2px 0 0 0;
-        font-size: 16px;
+        font-size: clamp(15px, 3.5vw, 17px);
         font-weight: 600;
         letter-spacing: -0.015em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .zv-spacer {
         flex: 1;
       }
       .avatar-btn {
+        flex-shrink: 0;
         background: rgba(15, 23, 42, 0.04);
       }
       .menu-header {
@@ -366,31 +417,132 @@ interface NavItem {
         width: fit-content;
       }
       .content {
-        min-height: calc(100vh - 64px);
+        flex: 1;
+        min-height: 0;
+        overflow-x: clip;
+      }
+      .content--nav {
+        padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9;
+        display: flex;
+        justify-content: space-around;
+        align-items: stretch;
+        min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: saturate(1.3) blur(16px);
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
+      }
+      .bottom-nav__item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        max-width: 160px;
+        margin: 0 auto;
+        padding: 8px 4px;
+        text-decoration: none;
+        color: var(--mat-sys-on-surface-variant);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        min-height: 48px;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .bottom-nav__item.active {
+        color: #7c3aed;
+      }
+      .bottom-nav__icon {
+        font-size: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+      }
+      .bottom-nav__label {
+        text-align: center;
+        line-height: 1.15;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 2px;
       }
     `,
   ],
 })
 export class UserShellComponent implements OnInit {
   readonly auth = inject(AuthService);
+  readonly bookingPolicy = inject(UserBookingPolicyService);
   private readonly router = inject(Router);
+  private readonly breakpoint = inject(BreakpointObserver);
 
-  readonly nav: NavItem[] = [
-    { label: 'My Bookings', icon: 'event_available', path: '/app/my-bookings' },
-    { label: 'Book a Seat', icon: 'add_circle', path: '/app/book' },
-  ];
+  readonly isHandset = toSignal(
+    this.breakpoint.observe('(max-width: 959px)').pipe(map((r) => r.matches)),
+    { initialValue: false },
+  );
+  readonly drawerOpen = signal(false);
+
+  readonly navItems = computed(() => {
+    const items: NavItem[] = [
+      { label: 'My Bookings', icon: 'event_available', path: '/app/my-bookings' },
+    ];
+    if (!this.bookingPolicy.blocksNewBooking()) {
+      items.push({ label: 'Book a Seat', icon: 'add_circle', path: '/app/book' });
+    }
+    return items;
+  });
 
   readonly isAdmin = computed(
     () => this.auth.currentUser()?.roles.includes('admin') ?? false,
   );
   readonly pageTitle = signal('Dashboard');
 
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        if (this.isHandset()) {
+          this.drawerOpen.set(false);
+        }
+        this.bookingPolicy.refreshFromApi();
+      });
+  }
+
   ngOnInit(): void {
     this.auth.me().subscribe({ error: () => void 0 });
+    this.bookingPolicy.refreshFromApi();
     this.router.events.subscribe(() => {
-      const match = this.nav.find((n) => this.router.url.startsWith(n.path));
+      const match = this.navItems().find((n) => this.router.url.startsWith(n.path));
       this.pageTitle.set(match ? match.label : 'Dashboard');
     });
+  }
+
+  toggleDrawer(): void {
+    this.drawerOpen.update((v) => !v);
+  }
+
+  onDrawerOpened(opened: boolean): void {
+    if (this.isHandset()) {
+      this.drawerOpen.set(opened);
+    }
+  }
+
+  closeDrawerOnNavigate(): void {
+    if (this.isHandset()) {
+      this.drawerOpen.set(false);
+    }
   }
 
   goToAdminConsole(): void {

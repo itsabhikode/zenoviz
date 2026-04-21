@@ -4,6 +4,15 @@ from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
+class ForgotPasswordOutcome:
+    """Result of Cognito ``forgot_password`` (password reset code delivery)."""
+
+    code_sent: bool
+    verification_destination: str | None = None
+    delivery_medium: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CognitoRegisterResult:
     """Subset of cognito-idp `sign_up` used by the API layer."""
 
@@ -52,6 +61,19 @@ class AbstractCognitoClient(ABC):
     async def login(self, email: str, password: str) -> dict[str, str]: ...
 
     @abstractmethod
+    async def forgot_password(self, username: str) -> ForgotPasswordOutcome:
+        """Request a password-reset code (``Username`` is the sign-in alias, usually email)."""
+
+    @abstractmethod
+    async def confirm_forgot_password(
+        self,
+        username: str,
+        confirmation_code: str,
+        new_password: str,
+    ) -> None:
+        """Complete password reset with the verification code Cognito sent."""
+
+    @abstractmethod
     async def logout(self, access_token: str) -> None: ...
 
     @abstractmethod
@@ -74,3 +96,25 @@ class AbstractCognitoClient(ABC):
     @abstractmethod
     async def get_user_by_sub(self, user_id: str) -> CognitoUserSummary | None:
         """Fetch a user by Cognito `sub`. Returns None if absent."""
+
+    @abstractmethod
+    async def admin_add_user_to_group(self, user_id: str, group_name: str) -> None:
+        """Add user (`Username`=`user_id`) to the named Cognito group."""
+
+    @abstractmethod
+    async def admin_remove_user_from_group(self, user_id: str, group_name: str) -> None:
+        """Remove user from the named Cognito group."""
+
+    @abstractmethod
+    async def admin_list_groups_for_user(self, user_id: str) -> list[str]:
+        """Return Cognito group names for this user."""
+
+    @abstractmethod
+    async def admin_list_users_in_group(
+        self,
+        group_name: str,
+        *,
+        limit: int = 60,
+        pagination_token: str | None = None,
+    ) -> tuple[list[str], str | None]:
+        """Return Cognito subs (Username values) and optional pagination token."""

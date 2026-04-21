@@ -156,6 +156,7 @@ function addThreeHours(hhmm: string): string | null {
             @if (seatSelectionReady()) {
               <zv-seat-grid
                 [unavailable]="unavailableSeats()"
+                [adminDisabledIds]="adminDisabledSeatIds()"
                 [selected]="selectedSeat()"
                 [disabled]="loadingSeats()"
                 (selectedChange)="onSeatPicked($event)"
@@ -720,6 +721,7 @@ export class CreateBookingComponent {
 
   readonly selectedSeat = signal<number | null>(null);
   readonly unavailableSeats = signal<readonly number[]>([]);
+  readonly adminDisabledSeatIds = signal<readonly number[]>([]);
   readonly loadingSeats = signal(false);
 
   readonly availableCount = computed(() => 65 - this.unavailableSeats().length);
@@ -856,6 +858,7 @@ export class CreateBookingComponent {
 
     if (!ready || !start || !end) {
       this.unavailableSeats.set([]);
+      this.adminDisabledSeatIds.set([]);
       return;
     }
 
@@ -880,6 +883,7 @@ export class CreateBookingComponent {
     this.api.seatsAvailability(body).subscribe({
       next: (res) => {
         this.unavailableSeats.set(res.unavailable_seat_ids);
+        this.adminDisabledSeatIds.set(res.disabled_seat_ids ?? []);
         if (
           this.selectedSeat() !== null &&
           res.unavailable_seat_ids.includes(this.selectedSeat()!)
@@ -891,6 +895,7 @@ export class CreateBookingComponent {
       error: (err: HttpErrorResponse) => {
         this.loadingSeats.set(false);
         this.unavailableSeats.set([]);
+        this.adminDisabledSeatIds.set([]);
         this.snack.open(err.error?.detail ?? 'Could not load seat map', 'Dismiss', {
           duration: 4000,
         });

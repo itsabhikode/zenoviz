@@ -39,11 +39,11 @@ import { RegisterResponse } from '../../core/api/models';
           </div>
           <h1>Create your account.</h1>
           <p>
-            Sign up once and book any seat, any time. Your email gets a one-time
-            code from Cognito.
+            Sign up once and book any seat, any time. Cognito sends a one-time
+            verification code (email or SMS — your pool chooses).
           </p>
           <ul class="features">
-            <li><mat-icon>mail_lock</mat-icon> Verified via email code</li>
+            <li><mat-icon>mail_lock</mat-icon> Verified via Cognito</li>
             <li><mat-icon>event_seat</mat-icon> Instant seat reservations</li>
             <li><mat-icon>receipt_long</mat-icon> Upload payment proof in-app</li>
           </ul>
@@ -55,7 +55,7 @@ import { RegisterResponse } from '../../core/api/models';
           <div class="auth-card">
             <div class="card-head">
               <h2>Create your account</h2>
-              <p>Verified via Cognito email code</p>
+              <p>Verified via Cognito (email or SMS)</p>
             </div>
 
             @if (submitting()) {
@@ -64,7 +64,9 @@ import { RegisterResponse } from '../../core/api/models';
 
             @if (success(); as s) {
               <div class="success-banner">
-                <mat-icon class="check">mark_email_read</mat-icon>
+                <mat-icon class="check">{{
+                  s.delivery_medium === 'SMS' ? 'sms' : 'mark_email_read'
+                }}</mat-icon>
                 <p class="success-title">{{ s.message }}</p>
                 @if (s.verification_destination) {
                   <p class="success-body">
@@ -161,6 +163,9 @@ import { RegisterResponse } from '../../core/api/models';
       }
       .auth-shell {
         min-height: 100vh;
+        min-height: 100dvh;
+        max-width: 100%;
+        overflow-x: clip;
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
       }
@@ -259,7 +264,13 @@ import { RegisterResponse } from '../../core/api/models';
       .card-side {
         display: grid;
         place-items: center;
-        padding: 32px 24px;
+        padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+      @media (min-width: 901px) {
+        .card-side {
+          padding: 32px 24px;
+        }
       }
       .auth-card-wrap {
         width: 100%;

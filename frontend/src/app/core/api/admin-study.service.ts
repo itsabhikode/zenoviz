@@ -7,8 +7,10 @@ import {
   BookingResponse,
   PaymentSettingsResponse,
   PricingConfigResponse,
+  SeatResponse,
   UpdatePaymentSettingsRequest,
   UpdatePricingRequest,
+  UpdateSeatEnabledRequest,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -24,8 +26,23 @@ export class AdminStudyService {
     return this.http.put<PricingConfigResponse>(`${this.base}/pricing`, body);
   }
 
+  listSeats(): Observable<SeatResponse[]> {
+    return this.http.get<SeatResponse[]>(`${this.base}/seats`);
+  }
+
+  patchSeat(seatId: number, body: UpdateSeatEnabledRequest): Observable<SeatResponse> {
+    return this.http.patch<SeatResponse>(`${this.base}/seats/${seatId}`, body);
+  }
+
   pendingPayments(): Observable<BookingResponse[]> {
     return this.http.get<BookingResponse[]>(`${this.base}/bookings/pending-payments`);
+  }
+
+  /** Authenticated fetch of stored payment-proof image (local or S3-backed). */
+  downloadPaymentProof(bookingId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/bookings/${bookingId}/payment-proof`, {
+      responseType: 'blob',
+    });
   }
 
   /**

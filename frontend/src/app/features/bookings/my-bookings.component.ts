@@ -1,18 +1,18 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { BookingsService } from '../../core/api/bookings.service';
 import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models';
+import { UserBookingPolicyService } from '../../core/booking/user-booking-policy.service';
 
 @Component({
   selector: 'zv-my-bookings',
@@ -27,48 +27,29 @@ import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models'
     MatIconModule,
     MatProgressBarModule,
     MatSnackBarModule,
-    MatTableModule,
     MatTooltipModule,
   ],
   template: `
-    <div class="zv-page">
-      <div class="zv-flex-row">
-        <h2 class="zv-page-title">My Bookings</h2>
-        <span class="zv-spacer"></span>
-        <button mat-flat-button color="primary" routerLink="/app/book">
-          <mat-icon>add</mat-icon>
-          New booking
-        </button>
-      </div>
-
-      @if (!loading() && bookings().length > 0) {
-        <div class="zv-stats-grid">
-          <div class="zv-stat-card">
-            <div class="zv-stat-label">Total</div>
-            <div class="zv-stat-value">{{ bookings().length }}</div>
-          </div>
-          <div class="zv-stat-card zv-stat-card--reserved">
-            <div class="zv-stat-label">Reserved</div>
-            <div class="zv-stat-value">{{ statCount('RESERVED') }}</div>
-          </div>
-          <div class="zv-stat-card zv-stat-card--pending">
-            <div class="zv-stat-label">Pending</div>
-            <div class="zv-stat-value">{{ statCount('PAYMENT_PENDING') }}</div>
-          </div>
-          <div class="zv-stat-card zv-stat-card--completed">
-            <div class="zv-stat-label">Completed</div>
-            <div class="zv-stat-value">{{ statCount('COMPLETED') }}</div>
-          </div>
-          <div class="zv-stat-card zv-stat-card--expired">
-            <div class="zv-stat-label">Expired</div>
-            <div class="zv-stat-value">{{ statCount('EXPIRED') }}</div>
-          </div>
-          <div class="zv-stat-card zv-stat-card--rejected">
-            <div class="zv-stat-label">Rejected</div>
-            <div class="zv-stat-value">{{ statCount('REJECTED') }}</div>
-          </div>
+    <div class="zv-page my-bookings">
+      <header class="page-head">
+        <div class="page-head__titles">
+          <h2 class="zv-page-title">My bookings</h2>
+          <p class="page-head__sub">
+            Current and past reservations. Upload payment and edit from the buttons on each
+            card.
+          </p>
         </div>
-      }
+        @if (!bookingPolicy.blocksNewBooking()) {
+          <button mat-flat-button color="primary" class="new-btn" routerLink="/app/book">
+            <mat-icon>add</mat-icon>
+            New booking
+          </button>
+        } @else {
+          <p class="policy-hint">
+            One seat at a time — use <strong>Edit</strong> on your reservation below.
+          </p>
+        }
+      </header>
 
       @if (loading()) {
         <mat-progress-bar mode="indeterminate" />
@@ -77,11 +58,10 @@ import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models'
       @if (showPaymentCard()) {
         <mat-card class="payment-card">
           <mat-card-header>
-            <mat-icon mat-card-avatar>qr_code_2</mat-icon>
+            <mat-icon mat-card-avatar class="payment-avatar">qr_code_2</mat-icon>
             <mat-card-title>Pay for your reservation</mat-card-title>
             <mat-card-subtitle>
-              Scan the QR below, then upload the payment screenshot for the matching
-              booking.
+              Scan the QR or use UPI, then upload the screenshot on your booking card below.
             </mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
@@ -99,11 +79,12 @@ import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models'
                   <div><strong>Payee:</strong> {{ settings()!.payee_name }}</div>
                 }
                 @if (settings()?.upi_vpa) {
-                  <div>
+                  <div class="upi-row">
                     <strong>UPI:</strong>
                     <code>{{ settings()!.upi_vpa }}</code>
                     <button
                       mat-icon-button
+                      type="button"
                       (click)="copyUpi()"
                       matTooltip="Copy UPI ID"
                       aria-label="Copy UPI ID"
@@ -123,191 +104,242 @@ import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models'
 
       @if (!loading() && bookings().length === 0) {
         <mat-card>
-          <div class="zv-card-section empty">
-            <mat-icon>event_busy</mat-icon>
-            <p>You haven't booked any seats yet.</p>
-            <button mat-flat-button color="primary" routerLink="/app/book">Book a seat</button>
+          <div class="empty">
+            <mat-icon>event_seat</mat-icon>
+            <p>You haven't booked a seat yet.</p>
+            @if (!bookingPolicy.blocksNewBooking()) {
+              <button mat-flat-button color="primary" routerLink="/app/book">Book a seat</button>
+            }
           </div>
         </mat-card>
       }
 
       @if (bookings().length > 0) {
-        <mat-card>
-          <table mat-table [dataSource]="bookings()" class="full-width">
-            <ng-container matColumnDef="seat">
-              <th mat-header-cell *matHeaderCellDef>Seat</th>
-              <td mat-cell *matCellDef="let b">#{{ b.seat_id }}</td>
-            </ng-container>
-
-            <ng-container matColumnDef="dates">
-              <th mat-header-cell *matHeaderCellDef>Dates</th>
-              <td mat-cell *matCellDef="let b">
-                {{ b.start_date }} → {{ b.end_date }}
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="access">
-              <th mat-header-cell *matHeaderCellDef>Access</th>
-              <td mat-cell *matCellDef="let b">
-                @if (b.access_type === 'anytime') {
-                  <mat-chip>ANYTIME</mat-chip>
-                } @else {
-                  <mat-chip>{{ b.start_time }}–{{ b.end_time }}</mat-chip>
-                }
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef>Category</th>
-              <td mat-cell *matCellDef="let b">{{ b.category }}</td>
-            </ng-container>
-
-            <ng-container matColumnDef="price">
-              <th mat-header-cell *matHeaderCellDef>Price</th>
-              <td mat-cell *matCellDef="let b">
-                <div class="price-cell">
-                  <span class="price-total">₹{{ b.final_price }}</span>
-                  @if (hasTopup(b)) {
-                    <span
-                      class="price-due"
-                      [matTooltip]="
-                        'Already paid ₹' + b.paid_amount + ' — top-up needed for the upgrade'
-                      "
-                    >
-                      ₹{{ b.amount_due }} due
-                    </span>
-                  }
-                </div>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
-              <td mat-cell *matCellDef="let b">
+        <section class="booking-list" aria-label="Your bookings">
+          @for (b of sortedBookings(); track b.id) {
+            <mat-card class="booking-card">
+              <div class="booking-card__top">
                 <span class="zv-status-pill" [ngClass]="statusPillClass(b.status)">
                   {{ statusLabel(b.status) }}
                 </span>
                 @if (b.status === 'RESERVED' && b.reserved_until) {
-                  <span class="deadline" [matTooltip]="'Reserved until ' + b.reserved_until">
-                    · expires {{ b.reserved_until | date: 'short' }}
+                  <span class="expires" [matTooltip]="'Reserved until ' + b.reserved_until">
+                    <mat-icon class="expires-icon">schedule</mat-icon>
+                    Pay by {{ b.reserved_until | date: 'short' }}
                   </span>
                 }
-              </td>
-            </ng-container>
+              </div>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Actions</th>
-              <td mat-cell *matCellDef="let b">
-                <div class="actions-cell">
-                  @if (b.status === 'RESERVED') {
-                    <input
-                      #fileInput
-                      type="file"
-                      hidden
-                      accept="image/*,.pdf"
-                      (change)="upload(b, fileInput)"
-                    />
-                    <button
-                      mat-stroked-button
-                      color="primary"
-                      (click)="fileInput.click()"
-                      [disabled]="uploadingId() === b.id"
-                    >
-                      <mat-icon>upload_file</mat-icon>
-                      {{
-                        uploadingId() === b.id
-                          ? 'Uploading…'
-                          : hasTopup(b)
-                            ? 'Upload top-up'
-                            : 'Upload payment'
-                      }}
-                    </button>
-                  }
-                  @if (b.status === 'PAYMENT_PENDING') {
-                    <span class="muted">Awaiting admin approval</span>
-                  }
-                  @if (canEdit(b)) {
-                    <button
-                      mat-button
-                      color="primary"
-                      [routerLink]="['/app/bookings', b.id, 'edit']"
-                      [matTooltip]="editTooltip(b)"
-                    >
-                      <mat-icon>edit</mat-icon>
-                      Edit
-                    </button>
-                  }
+              <!-- Primary actions: always visible, thumb-friendly on mobile -->
+              <div class="booking-card__actions">
+                <input
+                  #fileInput
+                  type="file"
+                  hidden
+                  accept="image/*,.pdf"
+                  (change)="upload(b, fileInput)"
+                />
+                @if (b.status === 'RESERVED') {
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    class="action-primary"
+                    (click)="fileInput.click()"
+                    [disabled]="uploadingId() === b.id"
+                  >
+                    <mat-icon>upload_file</mat-icon>
+                    {{
+                      uploadingId() === b.id
+                        ? 'Uploading…'
+                        : hasTopup(b)
+                          ? 'Upload top-up proof'
+                          : 'Upload payment proof'
+                    }}
+                  </button>
+                }
+                @if (b.status === 'PAYMENT_PENDING') {
+                  <div class="awaiting-banner" role="status">
+                    <mat-icon>hourglass_empty</mat-icon>
+                    <span>Awaiting admin approval — you can still edit below if needed.</span>
+                  </div>
+                }
+                @if (canEdit(b)) {
+                  <a
+                    mat-stroked-button
+                    color="primary"
+                    class="action-edit"
+                    [routerLink]="['/app/bookings', b.id, 'edit']"
+                    [matTooltip]="editTooltip(b)"
+                  >
+                    <mat-icon>edit</mat-icon>
+                    Edit booking
+                  </a>
+                }
+              </div>
+
+              <dl class="detail-grid">
+                <div class="detail-row">
+                  <dt>Seat</dt>
+                  <dd>#{{ b.seat_id }}</dd>
                 </div>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="columns"></tr>
-            <tr mat-row *matRowDef="let row; columns: columns"></tr>
-          </table>
-        </mat-card>
+                <div class="detail-row">
+                  <dt>Dates</dt>
+                  <dd>{{ b.start_date }} → {{ b.end_date }}</dd>
+                </div>
+                <div class="detail-row">
+                  <dt>Access</dt>
+                  <dd>
+                    @if (b.access_type === 'anytime') {
+                      <mat-chip class="access-chip">Anytime</mat-chip>
+                    } @else {
+                      <mat-chip class="access-chip">{{ b.start_time }} – {{ b.end_time }}</mat-chip>
+                    }
+                  </dd>
+                </div>
+                <div class="detail-row">
+                  <dt>Category</dt>
+                  <dd>{{ b.category }}</dd>
+                </div>
+                <div class="detail-row">
+                  <dt>Price</dt>
+                  <dd class="price-block">
+                    <span class="price-total">₹{{ b.final_price }}</span>
+                    @if (hasTopup(b)) {
+                      <span
+                        class="price-due"
+                        [matTooltip]="
+                          'Already paid ₹' + b.paid_amount + ' — top-up owed for upgrade'
+                        "
+                      >
+                        ₹{{ b.amount_due }} due
+                      </span>
+                    }
+                  </dd>
+                </div>
+              </dl>
+            </mat-card>
+          }
+        </section>
       }
     </div>
   `,
   styles: [
     `
-      .full-width {
-        width: 100%;
+      .my-bookings {
+        max-width: 560px;
+        margin-left: auto;
+        margin-right: auto;
       }
+      @media (min-width: 960px) {
+        .my-bookings {
+          max-width: min(640px, 100%);
+        }
+      }
+
+      .page-head {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      @media (min-width: 480px) {
+        .page-head {
+          flex-direction: row;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+      }
+      .page-head__titles {
+        min-width: 0;
+      }
+      .page-head__sub {
+        margin: 6px 0 0 0;
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .new-btn {
+        flex-shrink: 0;
+        align-self: stretch;
+      }
+      @media (min-width: 480px) {
+        .new-btn {
+          align-self: center;
+        }
+      }
+      .policy-hint {
+        margin: 0;
+        flex-shrink: 1;
+        max-width: 280px;
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--mat-sys-on-surface-variant);
+      }
+
       .empty {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
-        padding: 48px;
+        gap: 16px;
+        padding: 40px 20px;
+        text-align: center;
         color: var(--mat-sys-on-surface-variant);
       }
       .empty mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
+        font-size: 56px;
+        width: 56px;
+        height: 56px;
+        opacity: 0.7;
       }
-      .deadline {
-        font-size: 12px;
-        color: var(--mat-sys-on-surface-variant);
-        margin-left: 8px;
-      }
-      .muted {
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 13px;
-      }
+
       .payment-card {
-        margin-bottom: 16px;
+        margin-bottom: 20px;
         border-left: 4px solid var(--mat-sys-tertiary);
+      }
+      .payment-avatar {
+        background: rgba(124, 58, 237, 0.12);
+        color: #7c3aed;
       }
       .pay-row {
         display: flex;
-        gap: 24px;
+        flex-direction: column;
         align-items: center;
-        flex-wrap: wrap;
+        gap: 20px;
+      }
+      @media (min-width: 600px) {
+        .pay-row {
+          flex-direction: row;
+          align-items: flex-start;
+          justify-content: flex-start;
+        }
       }
       .qr-img {
-        width: 200px;
-        height: 200px;
+        width: min(220px, 70vw);
+        height: min(220px, 70vw);
+        max-width: 100%;
         object-fit: contain;
-        background: white;
-        padding: 8px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        background: #fff;
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: var(--zv-shadow-sm);
       }
       .qr-missing {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
-        width: 200px;
-        height: 200px;
+        gap: 8px;
+        width: min(220px, 70vw);
+        aspect-ratio: 1;
+        max-width: 100%;
         justify-content: center;
         color: var(--mat-sys-on-surface-variant);
         background: var(--mat-sys-surface-container);
-        border-radius: 8px;
+        border-radius: 12px;
         text-align: center;
-        padding: 12px;
-        font-size: 12px;
+        padding: 16px;
+        font-size: 13px;
       }
       .qr-missing mat-icon {
         font-size: 48px;
@@ -315,59 +347,190 @@ import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models'
         height: 48px;
       }
       .pay-details {
+        flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         font-size: 14px;
+      }
+      .upi-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
       }
       .pay-details code {
         background: var(--mat-sys-surface-container);
-        padding: 2px 6px;
-        border-radius: 4px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        word-break: break-all;
       }
       .instructions {
         color: var(--mat-sys-on-surface-variant);
         font-size: 13px;
-        max-width: 420px;
         white-space: pre-wrap;
+        margin: 0;
       }
-      .price-cell {
+
+      .booking-list {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 16px;
+      }
+
+      .booking-card {
+        overflow: visible;
+      }
+      .booking-card__top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .expires {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .expires-icon {
+        font-size: 16px !important;
+        width: 16px !important;
+        height: 16px !important;
+        vertical-align: middle;
+      }
+
+      .booking-card__actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .action-primary,
+      .action-edit {
+        width: 100%;
+        min-height: 48px;
+        font-size: 15px !important;
+        justify-content: center;
+      }
+      .action-edit {
+        text-decoration: none;
+      }
+
+      .awaiting-banner {
+        display: flex;
         align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+        border-radius: var(--zv-radius-md);
+        background: rgba(37, 99, 235, 0.08);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--mat-sys-on-surface);
+      }
+      .awaiting-banner mat-icon {
+        flex-shrink: 0;
+        margin-top: 2px;
+        color: var(--mat-sys-primary);
+      }
+
+      .detail-grid {
+        margin: 0;
+        padding: 16px 0 0 0;
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .detail-row {
+        display: grid;
+        grid-template-columns: minmax(100px, 36%) 1fr;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+      }
+      .detail-row:last-of-type {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      dt {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--mat-sys-on-surface-variant);
+        align-self: start;
+        padding-top: 2px;
+      }
+      dd {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--mat-sys-on-surface);
+        word-break: break-word;
+      }
+      .access-chip {
+        font-size: 12px !important;
+        min-height: 28px;
+      }
+      .price-block {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
       }
       .price-total {
-        font-weight: 600;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
+        font-size: 17px;
       }
       .price-due {
         font-size: 11px;
         font-weight: 600;
         color: var(--zv-status-pending-fg, #b45309);
-        background: rgba(245, 158, 11, 0.12);
-        padding: 1px 8px;
+        background: rgba(245, 158, 11, 0.14);
+        padding: 4px 10px;
         border-radius: 999px;
-      }
-      .actions-cell {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        flex-wrap: wrap;
       }
     `,
   ],
 })
-export class MyBookingsComponent implements OnDestroy {
+export class MyBookingsComponent implements OnInit, OnDestroy {
   private readonly api = inject(BookingsService);
   private readonly snack = inject(MatSnackBar);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  readonly bookingPolicy = inject(UserBookingPolicyService);
 
   readonly bookings = signal<BookingResponse[]>([]);
   readonly loading = signal(true);
   readonly uploadingId = signal<string | null>(null);
   readonly settings = signal<PaymentSettingsResponse | null>(null);
   readonly qrUrl = signal<string | null>(null);
-  readonly columns = ['seat', 'dates', 'access', 'category', 'price', 'status', 'actions'];
+
+  readonly sortedBookings = computed(() => {
+    const priority: Record<string, number> = {
+      RESERVED: 0,
+      PAYMENT_PENDING: 1,
+      COMPLETED: 2,
+      EXPIRED: 3,
+      REJECTED: 4,
+    };
+    return [...this.bookings()].sort((a, b) => {
+      const pa = priority[a.status] ?? 99;
+      const pb = priority[b.status] ?? 99;
+      if (pa !== pb) return pa - pb;
+      return (
+        new Date(b.start_date).getTime() - new Date(a.start_date).getTime() ||
+        b.id.localeCompare(a.id)
+      );
+    });
+  });
 
   readonly needsPayment = computed(() =>
     this.bookings().some(
@@ -375,9 +538,6 @@ export class MyBookingsComponent implements OnDestroy {
     ),
   );
 
-  statCount(status: BookingResponse['status']): number {
-    return this.bookings().filter((b) => b.status === status).length;
-  }
   readonly showPaymentCard = computed(() => {
     if (!this.needsPayment()) return false;
     const s = this.settings();
@@ -386,6 +546,23 @@ export class MyBookingsComponent implements OnDestroy {
 
   constructor() {
     this.reload();
+  }
+
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('notice') !== 'one-booking') {
+      return;
+    }
+    this.snack.open(
+      'You already have an active booking. Use Edit on your reservation — a second booking is not allowed.',
+      'Dismiss',
+      { duration: 5500 },
+    );
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { notice: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   ngOnDestroy(): void {
@@ -397,6 +574,7 @@ export class MyBookingsComponent implements OnDestroy {
     this.api.mine().subscribe({
       next: (data) => {
         this.bookings.set(data);
+        this.bookingPolicy.setFromBookings(data);
         this.loading.set(false);
         this.loadPaymentSettings();
       },
@@ -467,10 +645,6 @@ export class MyBookingsComponent implements OnDestroy {
     });
   }
 
-  /**
-   * Map a BookingStatus to the shared `zv-status-pill--*` modifier so every
-   * status looks identical across the app (list cards, tables, details).
-   */
   statusPillClass(status: string): string {
     switch (status) {
       case 'RESERVED':
@@ -488,12 +662,10 @@ export class MyBookingsComponent implements OnDestroy {
     }
   }
 
-  /** Human-friendly label for a BookingStatus. */
   statusLabel(status: string): string {
     return status === 'PAYMENT_PENDING' ? 'PENDING' : status;
   }
 
-  /** Only active bookings are editable; EXPIRED/REJECTED are read-only history. */
   canEdit(b: BookingResponse): boolean {
     return b.status === 'RESERVED' || b.status === 'PAYMENT_PENDING' || b.status === 'COMPLETED';
   }
@@ -508,10 +680,6 @@ export class MyBookingsComponent implements OnDestroy {
     return 'Change seat, dates, or time slot before paying.';
   }
 
-  /**
-   * True when the booking has been partially paid but now owes more — happens
-   * when a COMPLETED booking was edited up to a pricier plan.
-   */
   hasTopup(b: BookingResponse): boolean {
     return Number(b.paid_amount) > 0 && Number(b.amount_due) > 0;
   }

@@ -2,8 +2,10 @@ import asyncio
 import contextlib
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from botocore.exceptions import NoCredentialsError
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from src.config.app_settings import AppSettings
 from src.db.session import create_tables, get_async_session_maker, init_engine
@@ -35,6 +37,23 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Zenoviz", lifespan=lifespan)
+
+
+@app.exception_handler(NoCredentialsError)
+async def aws_no_credentials_handler(_request: Request, _exc: NoCredentialsError) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": (
+                "AWS credentials not configured. boto3 cannot call Cognito (including admin APIs). "
+                "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in backend/.env "
+                "(they are read into Cognito settings), configure ~/.aws/credentials via "
+                "`aws configure`, use AWS SSO, or attach an IAM role."
+            ),
+        },
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200"],

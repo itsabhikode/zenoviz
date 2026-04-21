@@ -26,3 +26,14 @@ class LocalStorageRepository(AbstractStorageRepository):
         if not path.exists():
             return None
         return path.read_bytes()
+
+    def read_payment_proof(self, stored: str) -> bytes | None:
+        path = Path(stored)
+        if path.is_absolute():
+            if not path.exists():
+                return None
+            return path.read_bytes()
+        candidate = self._upload_dir / stored
+        if not candidate.exists():
+            return None
+        return candidate.read_bytes()

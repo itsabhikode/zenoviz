@@ -104,3 +104,15 @@ def test_read_payment_qr_returns_none_for_missing_file(tmp_path: Path) -> None:
     result = repo.read_payment_qr("nonexistent.png")
 
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# LocalStorageRepository — read_payment_proof
+# ---------------------------------------------------------------------------
+
+
+def test_read_payment_proof_reads_roundtrip_absolute_path(tmp_path: Path) -> None:
+    repo = LocalStorageRepository(upload_dir=str(tmp_path / "proofs"), qr_dir=str(tmp_path / "qr"))
+    bid = uuid.uuid4()
+    stored = repo.save_payment_proof(bid, ".png", b"proof-bytes")
+    assert repo.read_payment_proof(stored) == b"proof-bytes"

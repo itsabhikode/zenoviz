@@ -6,6 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 
 from src.clients.base import AbstractCognitoClient, CognitoUserSummary
 from src.dependencies import (
@@ -21,8 +22,10 @@ from src.models.study_api import (
     BookingResponse,
     PaymentSettingsResponse,
     PricingConfigResponse,
+    SeatResponse,
     UpdatePaymentSettingsRequest,
     UpdatePricingRequest,
+    UpdateSeatEnabledRequest,
     UserSummaryResponse,
 )
 from src.services.booking_service import (
@@ -137,6 +140,46 @@ async def reject_payment(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     user_map = await _fetch_user_map(cognito, {b.user_id})
     return _bookings_to_admin_response([b], user_map)[0]
+
+
+@router.get("/bookings/{booking_id}/payment-proof")
+async def download_payment_proof(
+    booking_id: UUID,
+    _: Annotated[None, Depends(require_admin)],
+    svc: Annotated[BookingService, Depends(get_booking_service)],
+) -> Response:
+    result = await svc.read_payment_proof_for_admin(booking_id)
+    if result is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, detail="Payment proof not found"
+        )
+    data, media_type = result
+    return Response(content=data, media_type=media_type)
+
+
+@router.get("/seats", response_model=list[SeatResponse])
+async def list_seats(
+    _: Annotated[None, Depends(require_admin)],
+    svc: Annotated[BookingService, Depends(get_booking_service)],
+) -> list[SeatResponse]:
+    rows = await svc.list_seats_admin()
+    return [
+        SeatResponse(id=s.id, label=s.label, is_enabled=s.is_enabled) for s in rows
+    ]
+
+
+@router.patch("/seats/{seat_id}", response_model=SeatResponse)
+async def patch_seat_enabled(
+    seat_id: int,
+    body: UpdateSeatEnabledRequest,
+    _: Annotated[None, Depends(require_admin)],
+    svc: Annotated[BookingService, Depends(get_booking_service)],
+) -> SeatResponse:
+    try:
+        s = await svc.set_seat_enabled_admin(seat_id, body.is_enabled)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return SeatResponse(id=s.id, label=s.label, is_enabled=s.is_enabled)
 
 
 @router.put("/pricing", response_model=PricingConfigResponse)

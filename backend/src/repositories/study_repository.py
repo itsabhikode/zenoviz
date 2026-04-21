@@ -18,6 +18,18 @@ class AbstractStudyRepository(ABC):
     async def lock_seat_row(self, seat_id: int) -> Seat | None: ...
 
     @abstractmethod
+    async def get_seat(self, seat_id: int) -> Seat | None: ...
+
+    @abstractmethod
+    async def list_all_seats(self) -> list[Seat]: ...
+
+    @abstractmethod
+    async def list_disabled_seat_ids(self) -> list[int]: ...
+
+    @abstractmethod
+    async def set_seat_enabled(self, seat_id: int, enabled: bool) -> Seat | None: ...
+
+    @abstractmethod
     async def load_booked_intervals(
         self,
         seat_id: int,

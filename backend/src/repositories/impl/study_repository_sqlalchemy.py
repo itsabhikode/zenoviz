@@ -64,6 +64,25 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
             select(Seat).where(Seat.id == seat_id).with_for_update(),
         )
 
+    async def get_seat(self, seat_id: int) -> Seat | None:
+        return await self._session.scalar(select(Seat).where(Seat.id == seat_id))
+
+    async def list_all_seats(self) -> list[Seat]:
+        result = await self._session.scalars(select(Seat).order_by(Seat.id))
+        return list(result.all())
+
+    async def list_disabled_seat_ids(self) -> list[int]:
+        result = await self._session.scalars(select(Seat.id).where(Seat.is_enabled.is_(False)))
+        return sorted(result.all())
+
+    async def set_seat_enabled(self, seat_id: int, enabled: bool) -> Seat | None:
+        seat = await self._session.scalar(select(Seat).where(Seat.id == seat_id))
+        if seat is None:
+            return None
+        seat.is_enabled = enabled
+        await self._session.flush()
+        return seat
+
     async def load_booked_intervals(
         self,
         seat_id: int,

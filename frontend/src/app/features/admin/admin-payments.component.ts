@@ -124,10 +124,10 @@ import { BookingResponse } from '../../core/api/models';
               <th mat-header-cell *matHeaderCellDef>Proof</th>
               <td mat-cell *matCellDef="let b">
                 @if (b.payment_proof_path) {
-                  <a [href]="proofUrl(b.payment_proof_path)" target="_blank" rel="noopener">
+                  <button mat-button type="button" (click)="viewPaymentProof(b.id)">
                     <mat-icon>open_in_new</mat-icon>
                     View
-                  </a>
+                  </button>
                 }
               </td>
             </ng-container>
@@ -286,9 +286,19 @@ export class AdminPaymentsComponent {
     });
   }
 
-  proofUrl(path: string): string {
-    if (path.startsWith('http')) return path;
-    return `${location.origin}${path}`;
+  viewPaymentProof(bookingId: string): void {
+    this.api.downloadPaymentProof(bookingId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.snack.open(err.error?.detail ?? 'Could not load payment proof', 'Dismiss', {
+          duration: 4000,
+        });
+      },
+    });
   }
 
   userName(b: BookingResponse): string {

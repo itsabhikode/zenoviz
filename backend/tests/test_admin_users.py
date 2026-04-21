@@ -1,4 +1,4 @@
-"""Admin user-listing API: list/get/grant/revoke with mocked Cognito."""
+"""Admin user-listing API: list/get/grant/revoke with mocked Cognito groups."""
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -38,6 +38,18 @@ def _mk_user(sub: str, email: str, status: str = "CONFIRMED") -> CognitoUserSumm
 
 @pytest.fixture()
 def fake_cognito() -> AsyncMock:
+    membership: dict[str, set[str]] = {}
+
+    async def add_user(uid: str, gn: str) -> None:
+        membership.setdefault(uid, set()).add(gn)
+
+    async def remove_user(uid: str, gn: str) -> None:
+        if uid in membership:
+            membership[uid].discard(gn)
+
+    async def list_groups(uid: str) -> list[str]:
+        return sorted(membership.get(uid, set()))
+
     client = AsyncMock()
     client.list_users = AsyncMock(
         return_value=CognitoUserPage(
@@ -49,9 +61,15 @@ def fake_cognito() -> AsyncMock:
         )
     )
     client.get_user_by_sub = AsyncMock(
-        side_effect=lambda sub: _mk_user(sub, f"{sub}@example.com") if sub == "sub-1" else None
+        side_effect=lambda sub: _mk_user(sub, f"{sub}@example.com")
+        if sub == "sub-1"
+        else None
     )
     client.resolve_sub_by_email = AsyncMock(return_value=None)
+    client.admin_add_user_to_group = AsyncMock(side_effect=add_user)
+    client.admin_remove_user_from_group = AsyncMock(side_effect=remove_user)
+    client.admin_list_groups_for_user = AsyncMock(side_effect=list_groups)
+    client.admin_list_users_in_group = AsyncMock(return_value=([], None))
     return client
 
 
@@ -100,9 +118,7 @@ def test_list_users_propagates_pagination_and_filter(
 
 
 def test_list_users_reflects_granted_role(admin_client: TestClient) -> None:
-    grant = admin_client.post(
-        "/admin/roles/grant", json={"user_id": "sub-2", "role": "admin"}
-    )
+    grant = admin_client.post("/admin/roles/grant", json={"user_id": "sub-2", "role": "admin"})
     assert grant.status_code == 200
 
     r = admin_client.get("/admin/users")

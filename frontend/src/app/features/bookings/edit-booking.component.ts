@@ -200,6 +200,7 @@ function toHhmm(t: string | null | undefined): string | null {
               @if (seatSelectionReady()) {
                 <zv-seat-grid
                   [unavailable]="unavailableSeats()"
+                  [adminDisabledIds]="adminDisabledSeatIds()"
                   [selected]="selectedSeat()"
                   [disabled]="loadingSeats()"
                   (selectedChange)="onSeatPicked($event)"
@@ -592,6 +593,7 @@ export class EditBookingComponent {
   readonly availability = signal<AvailabilityResponse | null>(null);
   readonly selectedSeat = signal<number | null>(null);
   readonly unavailableSeats = signal<readonly number[]>([]);
+  readonly adminDisabledSeatIds = signal<readonly number[]>([]);
   readonly loadingSeats = signal(false);
 
   private priceReqId = 0;
@@ -784,6 +786,7 @@ export class EditBookingComponent {
 
     if (!ready || !start || !end || !orig) {
       this.unavailableSeats.set([]);
+      this.adminDisabledSeatIds.set([]);
       return;
     }
 
@@ -810,11 +813,14 @@ export class EditBookingComponent {
         // booking's own SeatBookingDay rows.
         const filtered = res.unavailable_seat_ids.filter((id) => id !== orig.seat_id);
         this.unavailableSeats.set(filtered);
+        const fd = (res.disabled_seat_ids ?? []).filter((id) => id !== orig.seat_id);
+        this.adminDisabledSeatIds.set(fd);
         this.loadingSeats.set(false);
       },
       error: () => {
         this.loadingSeats.set(false);
         this.unavailableSeats.set([]);
+        this.adminDisabledSeatIds.set([]);
       },
     });
   });

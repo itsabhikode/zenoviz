@@ -56,6 +56,20 @@ class SeatsAvailabilityRequest(BaseModel):
 class SeatsAvailabilityResponse(BaseModel):
     total_seats: int
     unavailable_seat_ids: list[int]
+    disabled_seat_ids: list[int] = Field(
+        default_factory=list,
+        description="Seats turned off by admin (also listed in unavailable_seat_ids).",
+    )
+
+
+class SeatResponse(BaseModel):
+    id: int
+    label: str
+    is_enabled: bool
+
+
+class UpdateSeatEnabledRequest(BaseModel):
+    is_enabled: bool
 
 
 class CreateBookingRequest(BaseModel):

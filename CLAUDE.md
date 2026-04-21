@@ -19,6 +19,9 @@ Monorepo: `backend/` (FastAPI + Python) and `frontend/` (Angular + TS).
 3. Every task → TDD: red (failing test) → green (implement) → refactor
 4. Done → /opsx:archive to save specs
 
+### Cursor agents
+When working under `backend/`, **`.cursor/rules/backend-openspec-superpowers.mdc`** turns on OpenSpec paths (`backend/openspec/…`), opsx workflow triggers, and Superpowers-equivalent steps (brainstorm → TDD → verify). Read that rule whenever backend files are in context.
+
 ## Superpowers skills (always required)
 - **brainstorming** — invoke before ANY code change, including small modifications and refactors, not just new features
 - **test-driven-development** — invoke before writing any implementation code; "too simple to test" is never a valid reason to skip
