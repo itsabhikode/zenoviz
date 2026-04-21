@@ -56,7 +56,7 @@ async def aws_no_credentials_handler(_request: Request, _exc: NoCredentialsError
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=["http://localhost:4200", "https://zenoviz.com", "https://www.zenoviz.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
