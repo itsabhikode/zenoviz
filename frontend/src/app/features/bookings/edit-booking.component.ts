@@ -24,6 +24,7 @@ import {
   CreateBookingRequest,
   SeatsAvailabilityRequest,
 } from '../../core/api/models';
+import { formatNprAmount, NPR_PREFIX, nprText } from '../../core/currency';
 import { SeatGridComponent } from './seat-grid.component';
 
 function toIsoDate(d: Date | null | undefined): string | null {
@@ -100,10 +101,10 @@ function toHhmm(t: string | null | undefined): string | null {
             <mat-icon>verified</mat-icon>
             <div>
               @if (paidAmountNumber(orig) > 0) {
-                <strong>This booking is marked paid (₹{{ orig.paid_amount }} credited).</strong>
+                <strong>This booking is marked paid ({{ nprPrefix }} {{ formatNpr(orig.paid_amount) }} credited).</strong>
               } @else {
                 <!-- Legacy rows (approved before the amount-aware flow) have
-                     paid_amount=0 on disk; don't lie about "₹0 paid". -->
+                     paid_amount=0 on disk; don't lie about "Rs. 0 paid". -->
                 <strong>This booking is marked completed.</strong>
               }
               You can upgrade or change to an equal-price plan. Upgrades require
@@ -232,15 +233,15 @@ function toHhmm(t: string | null | undefined): string | null {
                 <dl class="invoice-lines">
                   <div class="invoice-line">
                     <dt>Original plan</dt>
-                    <dd>₹{{ formatInr(orig.final_price) }}</dd>
+                    <dd>{{ nprPrefix }} {{ formatNpr(orig.final_price) }}</dd>
                   </div>
                   <div class="invoice-line">
                     <dt>Already paid</dt>
-                    <dd>₹{{ formatInr(orig.paid_amount) }}</dd>
+                    <dd>{{ nprPrefix }} {{ formatNpr(orig.paid_amount) }}</dd>
                   </div>
                   <div class="invoice-line">
                     <dt>New plan</dt>
-                    <dd>₹{{ formatInr(a.final_price) }}</dd>
+                    <dd>{{ nprPrefix }} {{ formatNpr(a.final_price) }}</dd>
                   </div>
                 </dl>
 
@@ -261,9 +262,9 @@ function toHhmm(t: string | null | undefined): string | null {
                     <span>{{ deltaLabel() }}</span>
                     <span class="total-amount">
                       @if (deltaSign() > 0) {
-                        +₹{{ formatInr(deltaAmount()) }}
+                        +{{ nprPrefix }} {{ formatNpr(deltaAmount(), 2) }}
                       } @else {
-                        ₹0
+                        {{ nprPrefix }} 0
                       }
                     </span>
                   </div>
@@ -285,7 +286,7 @@ function toHhmm(t: string | null | undefined): string | null {
                 @if (saving()) {
                   Saving…
                 } @else if (deltaSign() > 0) {
-                  Save & owe +₹{{ formatInr(deltaAmount()) }}
+                  Save & owe +{{ nprPrefix }} {{ formatNpr(deltaAmount(), 2) }}
                 } @else {
                   Save changes
                 }
@@ -579,6 +580,14 @@ export class EditBookingComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
+  readonly nprPrefix = NPR_PREFIX;
+  formatNpr(value: string | number, maxFractionDigits = 0): string {
+    if (maxFractionDigits > 0) {
+      return formatNprAmount(value, { maxFractionDigits, minFractionDigits: 0 });
+    }
+    return formatNprAmount(value);
+  }
+
   readonly form = this.fb.nonNullable.group({
     start_date: [null as Date | null, Validators.required],
     end_date: [null as Date | null, Validators.required],
@@ -866,13 +875,6 @@ export class EditBookingComponent {
     });
   });
 
-  formatInr(value: string | number): string {
-    const n = typeof value === 'string' ? parseFloat(value) : value;
-    if (!Number.isFinite(n)) return String(value);
-    const whole = Math.round(n);
-    return whole.toLocaleString('en-IN');
-  }
-
   paidAmountNumber(b: BookingResponse): number {
     const n = Number(b.paid_amount);
     return Number.isFinite(n) ? n : 0;
@@ -901,7 +903,7 @@ export class EditBookingComponent {
       next: (updated) => {
         this.saving.set(false);
         const msg = Number(updated.amount_due) > 0
-          ? `Saved. Upload proof for the top-up of ₹${updated.amount_due} on My Bookings.`
+          ? `Saved. Upload proof for the top-up of ${nprText(updated.amount_due)} on My Bookings.`
           : 'Booking updated.';
         this.snack.open(msg, 'Dismiss', { duration: 4500 });
         this.router.navigate(['/app/my-bookings']);

@@ -38,7 +38,7 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
       <mat-card>
         <form [formGroup]="form" (ngSubmit)="save()" class="form">
-          <h3>Base prices (₹)</h3>
+          <h3>Base prices (NPR, Rs.)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily</mat-label>

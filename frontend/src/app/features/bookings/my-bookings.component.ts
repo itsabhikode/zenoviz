@@ -13,6 +13,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BookingsService } from '../../core/api/bookings.service';
 import { BookingResponse, PaymentSettingsResponse } from '../../core/api/models';
 import { UserBookingPolicyService } from '../../core/booking/user-booking-policy.service';
+import { formatNprAmount, NPR_PREFIX, nprText } from '../../core/currency';
 
 @Component({
   selector: 'zv-my-bookings',
@@ -39,18 +40,21 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
             card.
           </p>
         </div>
-        @if (!bookingPolicy.blocksNewBooking()) {
-          <button mat-flat-button color="primary" class="new-btn" routerLink="/app/book">
-            <mat-icon>add</mat-icon>
-            New booking
-          </button>
-        } @else {
-          <p class="policy-hint">
-            One seat at a time — use <strong>Edit</strong> on your reservation below.
-          </p>
-        }
+        <div class="page-head__cta">
+          @if (!bookingPolicy.blocksNewBooking()) {
+            <button mat-flat-button color="primary" class="new-btn" routerLink="/app/book">
+              <mat-icon>add</mat-icon>
+              New booking
+            </button>
+          } @else {
+            <p class="policy-hint">
+              One seat at a time — use <strong>Edit</strong> on your reservation below.
+            </p>
+          }
+        </div>
       </header>
 
+      <div class="my-bookings__main">
       @if (loading()) {
         <mat-progress-bar mode="indeterminate" />
       }
@@ -61,7 +65,8 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
             <mat-icon mat-card-avatar class="payment-avatar">qr_code_2</mat-icon>
             <mat-card-title>Pay for your reservation</mat-card-title>
             <mat-card-subtitle>
-              Scan the QR or use UPI, then upload the screenshot on your booking card below.
+              Scan the payment QR, pay as instructed, then upload the screenshot on your booking
+              card below.
             </mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
@@ -79,15 +84,15 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
                   <div><strong>Payee:</strong> {{ settings()!.payee_name }}</div>
                 }
                 @if (settings()?.upi_vpa) {
-                  <div class="upi-row">
-                    <strong>UPI:</strong>
+                  <div class="payment-id-row">
+                    <strong>Payment:</strong>
                     <code>{{ settings()!.upi_vpa }}</code>
                     <button
                       mat-icon-button
                       type="button"
-                      (click)="copyUpi()"
-                      matTooltip="Copy UPI ID"
-                      aria-label="Copy UPI ID"
+                      (click)="copyPaymentId()"
+                      matTooltip="Copy payment details"
+                      aria-label="Copy payment details"
                     >
                       <mat-icon>content_copy</mat-icon>
                     </button>
@@ -204,15 +209,13 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
                 <div class="detail-row">
                   <dt>Price</dt>
                   <dd class="price-block">
-                    <span class="price-total">₹{{ b.final_price }}</span>
+                    <span class="price-total">{{ nprPrefix }} {{ formatNpr(b.final_price) }}</span>
                     @if (hasTopup(b)) {
                       <span
                         class="price-due"
-                        [matTooltip]="
-                          'Already paid ₹' + b.paid_amount + ' — top-up owed for upgrade'
-                        "
+                        [matTooltip]="topupTooltip(b)"
                       >
-                        ₹{{ b.amount_due }} due
+                        {{ nprPrefix }} {{ formatNpr(b.amount_due) }} due
                       </span>
                     }
                   </dd>
@@ -222,11 +225,15 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
           }
         </section>
       }
+      </div>
     </div>
   `,
   styles: [
     `
       .my-bookings {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
         max-width: 560px;
         margin-left: auto;
         margin-right: auto;
@@ -237,11 +244,34 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
         }
       }
 
+      .my-bookings__main {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        min-width: 0;
+      }
+
       .page-head {
         display: flex;
         flex-direction: column;
         gap: 16px;
         margin-bottom: 20px;
+      }
+      @media (max-width: 479px) {
+        .page-head {
+          display: contents;
+        }
+        .page-head__titles {
+          order: 0;
+          margin-bottom: 20px;
+        }
+        .my-bookings__main {
+          order: 1;
+        }
+        .page-head__cta {
+          order: 2;
+          margin-top: 4px;
+        }
       }
       @media (min-width: 480px) {
         .page-head {
@@ -260,22 +290,36 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
         line-height: 1.45;
         color: var(--mat-sys-on-surface-variant);
       }
-      .new-btn {
+      .page-head__cta {
         flex-shrink: 0;
-        align-self: stretch;
+        width: 100%;
+      }
+      @media (min-width: 480px) {
+        .page-head__cta {
+          width: auto;
+          align-self: center;
+        }
+      }
+      .new-btn {
+        width: 100%;
       }
       @media (min-width: 480px) {
         .new-btn {
-          align-self: center;
+          width: auto;
         }
       }
       .policy-hint {
         margin: 0;
         flex-shrink: 1;
-        max-width: 280px;
+        max-width: 100%;
         font-size: 14px;
         line-height: 1.45;
         color: var(--mat-sys-on-surface-variant);
+      }
+      @media (min-width: 480px) {
+        .policy-hint {
+          max-width: 280px;
+        }
       }
 
       .empty {
@@ -354,7 +398,7 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
         gap: 8px;
         font-size: 14px;
       }
-      .upi-row {
+      .payment-id-row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -381,6 +425,13 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
 
       .booking-card {
         overflow: visible;
+        padding: 8px 14px 18px;
+        box-sizing: border-box;
+      }
+      @media (min-width: 600px) {
+        .booking-card {
+          padding: 4px 4px 12px;
+        }
       }
       .booking-card__top {
         display: flex;
@@ -440,17 +491,22 @@ import { UserBookingPolicyService } from '../../core/booking/user-booking-policy
 
       .detail-grid {
         margin: 0;
-        padding: 16px 0 0 0;
+        padding: 16px 4px 0;
         border-top: 1px solid rgba(15, 23, 42, 0.08);
         display: flex;
         flex-direction: column;
         gap: 0;
       }
+      @media (min-width: 480px) {
+        .detail-grid {
+          padding: 16px 0 0 0;
+        }
+      }
       .detail-row {
         display: grid;
         grid-template-columns: minmax(100px, 36%) 1fr;
         gap: 12px;
-        padding: 10px 0;
+        padding: 12px 6px;
         border-bottom: 1px solid rgba(15, 23, 42, 0.05);
       }
       .detail-row:last-of-type {
@@ -506,6 +562,15 @@ export class MyBookingsComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly bookingPolicy = inject(UserBookingPolicyService);
+
+  /** Nepalese Rupee label for templates */
+  readonly nprPrefix = NPR_PREFIX;
+  formatNpr(value: string | number): string {
+    return formatNprAmount(value);
+  }
+  topupTooltip(b: BookingResponse): string {
+    return `Already paid ${nprText(b.paid_amount)} — top-up owed for upgrade`;
+  }
 
   readonly bookings = signal<BookingResponse[]>([]);
   readonly loading = signal(true);
@@ -627,11 +692,11 @@ export class MyBookingsComponent implements OnInit, OnDestroy {
     this.qrUrl.set(null);
   }
 
-  copyUpi(): void {
+  copyPaymentId(): void {
     const vpa = this.settings()?.upi_vpa;
     if (!vpa) return;
     navigator.clipboard.writeText(vpa).then(
-      () => this.snack.open('UPI ID copied', 'Dismiss', { duration: 2000 }),
+      () => this.snack.open('Payment details copied', 'Dismiss', { duration: 2000 }),
       () => this.snack.open('Copy failed', 'Dismiss', { duration: 2000 }),
     );
   }

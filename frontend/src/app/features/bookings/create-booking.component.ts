@@ -27,6 +27,7 @@ import {
   CreateBookingRequest,
   SeatsAvailabilityRequest,
 } from '../../core/api/models';
+import { formatNprAmount, NPR_PREFIX } from '../../core/currency';
 import { SeatGridComponent } from './seat-grid.component';
 
 function toIsoDate(d: Date | null | undefined): string | null {
@@ -236,7 +237,7 @@ function addThreeHours(hhmm: string): string | null {
                 <dl class="invoice-lines">
                   <div class="invoice-line">
                     <dt>Base price</dt>
-                    <dd>₹{{ formatInr(a.breakdown.base_price) }}</dd>
+                    <dd>{{ nprPrefix }} {{ formatNpr(a.breakdown.base_price) }}</dd>
                   </div>
                   @if (hasDiscount(a)) {
                     <div class="invoice-line">
@@ -244,7 +245,8 @@ function addThreeHours(hhmm: string): string | null {
                         Discount
                         <span class="line-meta">({{ a.breakdown.discount_percent }}%)</span>
                       </dt>
-                      <dd class="negative">−₹{{ formatInr(discountAmount(a)) }}</dd>
+                      <dd class="negative"
+                        >−{{ nprPrefix }} {{ formatNpr(discountAmount(a), 2) }}</dd>
                     </div>
                   }
                   @if (hasSurcharge(a)) {
@@ -255,14 +257,14 @@ function addThreeHours(hhmm: string): string | null {
                           >({{ a.breakdown.anytime_surcharge_percent }}%)</span
                         >
                       </dt>
-                      <dd>+₹{{ formatInr(a.breakdown.surcharge) }}</dd>
+                      <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.surcharge) }}</dd>
                     </div>
                   }
                 </dl>
 
                 <div class="invoice-total">
                   <span>Total due at booking</span>
-                  <span class="total-amount">₹{{ formatInr(a.final_price) }}</span>
+                  <span class="total-amount">{{ nprPrefix }} {{ formatNpr(a.final_price) }}</span>
                 </div>
 
                 <p class="invoice-note">
@@ -292,7 +294,8 @@ function addThreeHours(hhmm: string): string | null {
               @if (submitting()) {
                 Booking…
               } @else if (availability()?.available) {
-                Confirm booking · ₹{{ formatInr(availability()!.final_price) }}
+                Confirm booking · {{ nprPrefix }}
+                {{ formatNpr(availability()!.final_price) }}
               } @else {
                 Confirm booking
               }
@@ -703,6 +706,15 @@ export class CreateBookingComponent {
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
 
+  readonly nprPrefix = NPR_PREFIX;
+
+  formatNpr(value: string | number, maxFractionDigits = 0): string {
+    if (maxFractionDigits > 0) {
+      return formatNprAmount(value, { maxFractionDigits, minFractionDigits: 0 });
+    }
+    return formatNprAmount(value);
+  }
+
   readonly form = this.fb.nonNullable.group({
     start_date: [null as Date | null, Validators.required],
     end_date: [null as Date | null, Validators.required],
@@ -1003,13 +1015,6 @@ export class CreateBookingComponent {
     const start = this.form.controls.start_time.value;
     const slot = this.slotOptions.find((s) => s.start === start);
     return slot ? `${slot.start} – ${slot.end} · ${slot.meta}` : '—';
-  }
-
-  formatInr(value: string | number): string {
-    const n = typeof value === 'string' ? parseFloat(value) : value;
-    if (!Number.isFinite(n)) return String(value);
-    const whole = Math.round(n);
-    return whole.toLocaleString('en-IN');
   }
 
   hasDiscount(a: AvailabilityResponse): boolean {

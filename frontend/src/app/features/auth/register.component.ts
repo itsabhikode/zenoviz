@@ -79,6 +79,20 @@ import { RegisterResponse } from '../../core/api/models';
                 <a routerLink="/login" mat-flat-button color="primary">Go to sign in</a>
               </div>
             } @else {
+              @if (auth.googleOAuthAvailable) {
+                <div class="oauth-block">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="google-btn"
+                    (click)="signUpWithGoogle()"
+                    [disabled]="submitting()"
+                  >
+                    Continue with Google
+                  </button>
+                  <div class="oauth-divider"><span>or register with email</span></div>
+                </div>
+              }
               <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
                 <div class="row">
                   <mat-form-field appearance="outline">
@@ -105,10 +119,10 @@ import { RegisterResponse } from '../../core/api/models';
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Phone (E.164, e.g. +14155552671)</mat-label>
+                  <mat-label>Phone (E.164, e.g. +977 98XXXXXXX)</mat-label>
                   <input matInput formControlName="phone_number" />
                   @if (form.controls.phone_number.hasError('pattern')) {
-                    <mat-error>Use +countrycode followed by digits</mat-error>
+                    <mat-error>Use +country code followed by digits (no spaces)</mat-error>
                   }
                 </mat-form-field>
 
@@ -363,18 +377,43 @@ import { RegisterResponse } from '../../core/api/models';
       .alt a:hover {
         text-decoration: underline;
       }
+      .oauth-block {
+        padding: 8px 28px 0;
+      }
+      .google-btn {
+        width: 100%;
+        height: 48px;
+      }
+      .oauth-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 18px 0 6px;
+        color: var(--mat-sys-outline);
+        font-size: 13px;
+      }
+      .oauth-divider::before,
+      .oauth-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(15, 23, 42, 0.12);
+      }
     `,
   ],
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
 
   readonly form = this.fb.nonNullable.group({
     given_name: ['', Validators.required],
     family_name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
-    phone_number: ['', [Validators.required, Validators.pattern(/^\+[1-9]\d{6,14}$/)]],
+    phone_number: [
+      '+977',
+      [Validators.required, Validators.pattern(/^\+[1-9]\d{6,14}$/)],
+    ],
     gender: ['male' as 'male' | 'female' | 'other', Validators.required],
     password: ['', [Validators.required, Validators.minLength(8)]],
   });
@@ -382,6 +421,10 @@ export class RegisterComponent {
   readonly submitting = signal(false);
   readonly errorMsg = signal<string | null>(null);
   readonly success = signal<RegisterResponse | null>(null);
+
+  signUpWithGoogle(): void {
+    void this.auth.startGoogleOAuth(null);
+  }
 
   submit(): void {
     if (this.form.invalid) return;

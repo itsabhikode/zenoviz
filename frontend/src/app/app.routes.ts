@@ -21,6 +21,11 @@ export const routes: Routes = [
         (m) => m.ForgotPasswordComponent,
       ),
   },
+  {
+    path: 'auth/callback',
+    loadComponent: () =>
+      import('./features/auth/oauth-callback.component').then((m) => m.OAuthCallbackComponent),
+  },
 
   {
     path: 'app',

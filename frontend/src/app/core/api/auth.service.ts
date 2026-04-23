@@ -1,9 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, tap, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import {
+  ZV_OAUTH_RETURN,
+  ZV_OAUTH_STATE,
+  ZV_OAUTH_VERIFIER,
+  buildGoogleAuthorizeUrl,
+  cognitoTokenUrl,
+  newOAuthState,
+  newPkceVerifier,
+  pkceChallengeS256,
+} from '../auth/cognito-oauth';
 import { TokenStorage } from '../auth/token-storage';
 import {
   ApiMessageResponse,
@@ -21,6 +31,10 @@ export class AuthService {
   private readonly storage = inject(TokenStorage);
   private readonly router = inject(Router);
   private readonly base = `${environment.apiBaseUrl}/auth`;
+
+  /** True when Cognito Hosted UI env vars are set so Google OAuth can run. */
+  readonly googleOAuthAvailable =
+    !!environment.cognitoHostedUiDomain && !!environment.cognitoAppClientId;
 
   readonly currentUser = signal<MeResponse | null>(null);
 
@@ -50,6 +64,71 @@ export class AuthService {
     return this.http.post<LoginTokens>(`${this.base}/login`, { email, password }).pipe(
       tap((res) => this.storage.setTokens(res.access_token, res.refresh_token)),
     );
+  }
+
+  /**
+   * Starts Cognito Hosted UI with the Google identity provider (PKCE). Redirects the browser.
+   */
+  async startGoogleOAuth(returnTo: string | null): Promise<void> {
+    if (!this.googleOAuthAvailable) return;
+    const verifier = newPkceVerifier();
+    const state = newOAuthState();
+    sessionStorage.setItem(ZV_OAUTH_VERIFIER, verifier);
+    sessionStorage.setItem(ZV_OAUTH_STATE, state);
+    if (returnTo) {
+      sessionStorage.setItem(ZV_OAUTH_RETURN, returnTo);
+    } else {
+      sessionStorage.removeItem(ZV_OAUTH_RETURN);
+    }
+    const challenge = await pkceChallengeS256(verifier);
+    const url = buildGoogleAuthorizeUrl({
+      hostedUiDomain: environment.cognitoHostedUiDomain,
+      clientId: environment.cognitoAppClientId,
+      redirectUri: environment.oauthRedirectUri,
+      codeChallenge: challenge,
+      state,
+      identityProvider: environment.cognitoGoogleIdentityProvider,
+    });
+    window.location.href = url;
+  }
+
+  /**
+   * Exchanges the authorization code from `/auth/callback` for Cognito tokens (Hosted UI + PKCE).
+   */
+  exchangeHostedUiCode(code: string): Observable<LoginTokens> {
+    if (!this.googleOAuthAvailable) {
+      return throwError(() => new Error('Google sign-in is not configured'));
+    }
+    const verifier = sessionStorage.getItem(ZV_OAUTH_VERIFIER);
+    if (!verifier) {
+      return throwError(() => new Error('Sign-in session expired. Try again.'));
+    }
+    const tokenUrl = cognitoTokenUrl(environment.cognitoHostedUiDomain);
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: environment.cognitoAppClientId,
+      code,
+      redirect_uri: environment.oauthRedirectUri,
+      code_verifier: verifier,
+    });
+    return this.http
+      .post<LoginTokens>(tokenUrl, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      })
+      .pipe(
+        tap((res) => this.storage.setTokens(res.access_token, res.refresh_token)),
+        finalize(() => {
+          sessionStorage.removeItem(ZV_OAUTH_VERIFIER);
+          sessionStorage.removeItem(ZV_OAUTH_STATE);
+        }),
+      );
+  }
+
+  /** Path to navigate after OAuth success (from login/register `returnTo`). */
+  consumeOAuthReturnPath(): string | null {
+    const path = sessionStorage.getItem(ZV_OAUTH_RETURN);
+    sessionStorage.removeItem(ZV_OAUTH_RETURN);
+    return path;
   }
 
   register(body: RegisterRequest): Observable<RegisterResponse> {

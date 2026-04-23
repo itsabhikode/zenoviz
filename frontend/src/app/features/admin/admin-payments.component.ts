@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AdminStudyService } from '../../core/api/admin-study.service';
 import { BookingResponse } from '../../core/api/models';
+import { formatNprAmount, NPR_PREFIX, nprText } from '../../core/currency';
 
 @Component({
   selector: 'zv-admin-payments',
@@ -103,18 +104,18 @@ import { BookingResponse } from '../../core/api/models';
               <th mat-header-cell *matHeaderCellDef>Expected</th>
               <td mat-cell *matCellDef="let b">
                 <div class="expected-cell">
-                  <span class="expected-due">₹{{ b.amount_due }}</span>
+                  <span class="expected-due">{{ nprPrefix }} {{ formatNpr(b.amount_due) }}</span>
                   @if (hasPartialPayment(b)) {
                     <span
                       class="expected-sub"
-                      [matTooltip]="
-                        'Total ₹' + b.final_price + ' · already credited ₹' + b.paid_amount
-                      "
+                      [matTooltip]="expectedPriceTooltip(b)"
                     >
-                      of ₹{{ b.final_price }} · paid ₹{{ b.paid_amount }}
+                      of {{ nprPrefix }} {{ formatNpr(b.final_price) }} · paid
+                      {{ nprPrefix }} {{ formatNpr(b.paid_amount) }}
                     </span>
                   } @else {
-                    <span class="expected-sub">total ₹{{ b.final_price }}</span>
+                    <span class="expected-sub"
+                      >total {{ nprPrefix }} {{ formatNpr(b.final_price) }}</span>
                   }
                 </div>
               </td>
@@ -145,7 +146,7 @@ import { BookingResponse } from '../../core/api/models';
                 <div class="verify-cell">
                   <mat-form-field appearance="outline" class="amount-field" subscriptSizing="dynamic">
                     <mat-label>Paid amount</mat-label>
-                    <span matTextPrefix>₹&nbsp;</span>
+                    <span matTextPrefix>{{ nprPrefix }}&nbsp;</span>
                     <input
                       matInput
                       type="number"
@@ -244,6 +245,15 @@ import { BookingResponse } from '../../core/api/models';
 export class AdminPaymentsComponent {
   private readonly api = inject(AdminStudyService);
   private readonly snack = inject(MatSnackBar);
+
+  readonly nprPrefix = NPR_PREFIX;
+  formatNpr(value: string | number): string {
+    return formatNprAmount(value);
+  }
+
+  expectedPriceTooltip(b: BookingResponse): string {
+    return `Total ${nprText(b.final_price)} · already credited ${nprText(b.paid_amount)}`;
+  }
 
   readonly bookings = signal<BookingResponse[]>([]);
   readonly loading = signal(false);
@@ -368,7 +378,7 @@ export class AdminPaymentsComponent {
       next: (updated) => {
         this.busyId.set(null);
         if (updated.status === 'COMPLETED') {
-          this.snack.open(`Approved · ₹${updated.paid_amount} credited`, 'Dismiss', {
+          this.snack.open(`Approved · ${nprText(updated.paid_amount)} credited`, 'Dismiss', {
             duration: 3000,
           });
           this.bookings.update((list) => list.filter((x) => x.id !== b.id));
@@ -377,7 +387,7 @@ export class AdminPaymentsComponent {
           // pending queue. We remove it from the table and nudge the admin
           // that the user still owes the balance.
           this.snack.open(
-            `Partial ₹${amount ?? raw} credited. User still owes ₹${updated.amount_due}.`,
+            `Partial ${nprText(String(amount ?? raw))} credited. User still owes ${nprText(updated.amount_due)}.`,
             'Dismiss',
             { duration: 5000 },
           );

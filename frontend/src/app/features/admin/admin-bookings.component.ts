@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AdminStudyService } from '../../core/api/admin-study.service';
 import { BookingResponse, BookingStatus } from '../../core/api/models';
+import { formatNprAmount, NPR_PREFIX } from '../../core/currency';
 
 type StatusFilter = BookingStatus | 'ALL';
 
@@ -181,7 +182,9 @@ const STATUS_OPTIONS: StatusOption[] = [
 
             <ng-container matColumnDef="price">
               <th mat-header-cell *matHeaderCellDef>Price</th>
-              <td mat-cell *matCellDef="let b">₹{{ b.final_price }}</td>
+              <td mat-cell *matCellDef="let b">
+                {{ nprPrefix }} {{ formatNpr(b.final_price) }}
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="status">
@@ -310,6 +313,11 @@ const STATUS_OPTIONS: StatusOption[] = [
 export class AdminBookingsComponent {
   private readonly api = inject(AdminStudyService);
   private readonly snack = inject(MatSnackBar);
+
+  readonly nprPrefix = NPR_PREFIX;
+  formatNpr(value: string | number): string {
+    return formatNprAmount(value);
+  }
 
   readonly bookings = signal<BookingResponse[]>([]);
   readonly loading = signal(false);

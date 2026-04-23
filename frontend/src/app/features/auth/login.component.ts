@@ -59,6 +59,21 @@ import { AuthService } from '../../core/api/auth.service';
               <p>Sign in to manage your bookings</p>
             </div>
 
+            @if (auth.googleOAuthAvailable) {
+              <div class="oauth-block">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="google-btn"
+                  (click)="signInWithGoogle()"
+                  [disabled]="submitting()"
+                >
+                  Continue with Google
+                </button>
+                <div class="oauth-divider"><span>or</span></div>
+              </div>
+            }
+
             @if (submitting()) {
               <mat-progress-bar mode="indeterminate" class="card-progress" />
             }
@@ -325,12 +340,34 @@ import { AuthService } from '../../core/api/auth.service';
       .alt a:hover {
         text-decoration: underline;
       }
+      .oauth-block {
+        padding: 8px 28px 0;
+      }
+      .google-btn {
+        width: 100%;
+        height: 48px;
+      }
+      .oauth-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 18px 0 6px;
+        color: var(--mat-sys-outline);
+        font-size: 13px;
+      }
+      .oauth-divider::before,
+      .oauth-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(15, 23, 42, 0.12);
+      }
     `,
   ],
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -342,6 +379,11 @@ export class LoginComponent {
   readonly submitting = signal(false);
   readonly showPassword = signal(false);
   readonly errorMsg = signal<string | null>(null);
+
+  signInWithGoogle(): void {
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    void this.auth.startGoogleOAuth(returnTo);
+  }
 
   submit(): void {
     if (this.form.invalid) return;
