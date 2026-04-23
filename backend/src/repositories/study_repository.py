@@ -58,6 +58,9 @@ class AbstractStudyRepository(ABC):
     async def get_booking(self, booking_id: UUID) -> Booking | None: ...
 
     @abstractmethod
+    async def get_booking_with_day_slots(self, booking_id: UUID) -> Booking | None: ...
+
+    @abstractmethod
     async def list_user_bookings(self, user_id: str) -> list[Booking]: ...
 
     @abstractmethod

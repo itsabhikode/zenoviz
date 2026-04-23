@@ -68,6 +68,9 @@ class Booking(Base):
     )
     price_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON)
     payment_proof_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Last fully paid plan, saved before an edit that increases :attr:`final_price` above
+    #: :attr:`paid_amount` so the expiry job can restore it if the top-up times out.
+    reversion_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

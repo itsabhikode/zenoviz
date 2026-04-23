@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models.orm.study_room import (
     Booking,
@@ -16,6 +17,13 @@ from src.models.orm.study_room import (
     SeatBookingDay,
 )
 from src.repositories.study_repository import AbstractStudyRepository
+
+
+def _as_utc_aware(dt: datetime) -> datetime:
+    """SQLite may return offset-naive datetimes; compare against aware ``now`` safely."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class SqlAlchemyStudyRepository(AbstractStudyRepository):
@@ -144,6 +152,13 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
     async def get_booking(self, booking_id: UUID) -> Booking | None:
         return await self._session.get(Booking, booking_id)
 
+    async def get_booking_with_day_slots(self, booking_id: UUID) -> Booking | None:
+        return await self._session.scalar(
+            select(Booking)
+            .options(selectinload(Booking.day_slots))
+            .where(Booking.id == booking_id)
+        )
+
     async def list_user_bookings(self, user_id: str) -> list[Booking]:
         return list(
             await self._session.scalars(
@@ -215,16 +230,95 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
                     Booking.status == BookingStatus.RESERVED.value,
                     Booking.reserved_until.is_not(None),
                     Booking.reserved_until < now,
-                ).with_for_update()
+                )
             )
         )
-        ids = [b.id for b in rows]
-        if not ids:
+        if not rows:
             return 0
-        await self._session.execute(delete(SeatBookingDay).where(SeatBookingDay.booking_id.in_(ids)))
+        n = 0
+        for b in rows:
+            # Lock row in DB for this booking only (portable: re-fetch with FOR UPDATE).
+            locked = await self._session.scalar(
+                select(Booking).where(Booking.id == b.id).with_for_update()
+            )
+            if locked is None or locked.reserved_until is None:
+                continue
+            if _as_utc_aware(locked.reserved_until) >= now:
+                continue
+            if locked.status != BookingStatus.RESERVED.value:
+                continue
+            n += 1
+            if locked.reversion_snapshot is not None:
+                await self._revert_to_paid_plan(locked, now)
+            else:
+                await self._expire_reserved(locked, now)
+        return n
+
+    async def _expire_reserved(self, b: Booking, now: datetime) -> None:
+        await self._session.execute(
+            delete(SeatBookingDay).where(SeatBookingDay.booking_id == b.id)
+        )
         await self._session.execute(
             update(Booking)
-            .where(Booking.id.in_(ids))
-            .values(status=BookingStatus.EXPIRED.value, reserved_until=None, updated_at=now)
+            .where(Booking.id == b.id)
+            .values(
+                status=BookingStatus.EXPIRED.value,
+                reserved_until=None,
+                updated_at=now,
+            )
         )
-        return len(ids)
+
+    async def _revert_to_paid_plan(self, b: Booking, now: datetime) -> None:
+        """Restore last fully paid plan from ``reversion_snapshot`` (upgrade top-up timeout)."""
+        snap = b.reversion_snapshot
+        if not isinstance(snap, dict) or snap.get("v") != 1:
+            await self._expire_reserved(b, now)
+            return
+        try:
+            paid = Decimal(str(b.paid_amount or 0))
+            target_final = Decimal(str(snap["final_price"]))
+        except (KeyError, ValueError, TypeError):
+            await self._expire_reserved(b, now)
+            return
+        if paid < target_final:
+            await self._expire_reserved(b, now)
+            return
+        start_date = date.fromisoformat(str(snap["start_date"]))
+        end_date = date.fromisoformat(str(snap["end_date"]))
+
+        await self._session.execute(
+            delete(SeatBookingDay).where(SeatBookingDay.booking_id == b.id)
+        )
+        day_in = snap.get("day_rows") or []
+        for dr in day_in:
+            drow = SeatBookingDay(
+                id=uuid4(),
+                booking_id=b.id,
+                seat_id=int(dr["seat_id"]),
+                booking_date=date.fromisoformat(str(dr["booking_date"])),
+                start_minute=int(dr["start_minute"]),
+                end_minute=int(dr["end_minute"]),
+            )
+            self._session.add(drow)
+
+        await self._session.execute(
+            update(Booking)
+            .where(Booking.id == b.id)
+            .values(
+                seat_id=int(snap["seat_id"]),
+                start_date=start_date,
+                end_date=end_date,
+                access_type=str(snap["access_type"]),
+                start_minute=int(snap["start_minute"]),
+                end_minute=int(snap["end_minute"]),
+                category=str(snap["category"]),
+                duration_days=int(snap["duration_days"]),
+                final_price=target_final,
+                price_breakdown=snap.get("price_breakdown") or {},
+                status=BookingStatus.COMPLETED.value,
+                reserved_until=None,
+                reversion_snapshot=None,
+                payment_proof_path=None,
+                updated_at=now,
+            )
+        )

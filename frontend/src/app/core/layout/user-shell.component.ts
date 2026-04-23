@@ -420,9 +420,13 @@ interface NavItem {
         flex: 1;
         min-height: 0;
         overflow-x: clip;
+        /* Keep vertical scroll in main so padding-bottom is included at scroll end. */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .content--nav {
-        padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+        /* Fixed bottom nav: icon+label+padding is often >56px; add gap so CTAs are not under the bar. */
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
       }
 
       .bottom-nav {

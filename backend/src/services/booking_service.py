@@ -330,10 +330,12 @@ class BookingService:
           keep the booking COMPLETED. If new_final > paid_amount the booking
           flips to RESERVED with a fresh expiry — the user must upload new
           proof for the top-up (new_final - paid_amount), which the admin
-          re-approves. A cheaper change is rejected with a clear error.
+          re-approves. If that top-up window expires, the reservation is reverted
+          to the last fully paid plan (seats/day slots restored) instead of EXPIRED.
+          A cheaper change is rejected with a clear error.
         - Other statuses (REJECTED/EXPIRED) are not editable.
         """
-        booking = await self._repo.get_booking(booking_id)
+        booking = await self._repo.get_booking_with_day_slots(booking_id)
         if booking is None or booking.user_id != user_id:
             raise ValueError("Booking not found")
         editable = {
@@ -379,6 +381,19 @@ class BookingService:
 
         now = _utcnow()
 
+        # If the user is fully paid up on the current plan and this edit makes the
+        # total more expensive, save the current plan so the expiry job can restore
+        # it if the top-up window expires (they keep the seat for what they already paid).
+        cur_final = Decimal(booking.final_price)
+        fully_paid = paid >= cur_final
+        if (
+            fully_paid
+            and new_final > paid
+            and paid > 0
+            and not booking.reversion_snapshot
+        ):
+            booking.reversion_snapshot = _reversion_snapshot_v1(booking)
+
         # Replace day slots wholesale. Safe because we just checked availability
         # with this booking excluded, and the seat is locked for the txn.
         await self._repo.delete_day_slots_for_booking(booking.id)
@@ -410,7 +425,7 @@ class BookingService:
 
         if was_completed and new_final == paid:
             # No monetary change — stay COMPLETED, keep proof path intact.
-            pass
+            booking.reversion_snapshot = None
         else:
             # Either a pre-payment edit or a paid booking that needs a top-up.
             # Reset to RESERVED so the user has time to pay (the delta, for
@@ -518,6 +533,7 @@ class BookingService:
 
         if booking.paid_amount >= final:
             booking.status = BookingStatus.COMPLETED.value
+            booking.reversion_snapshot = None
         else:
             # Partial credit recorded; hand control back to the user to settle
             # the rest. Clearing the proof keeps the pending-payments queue
@@ -664,6 +680,32 @@ class BookingService:
 
 
 _MONEY_Q = Decimal("0.01")
+
+
+def _reversion_snapshot_v1(booking: Booking) -> dict[str, Any]:
+    """Serialize the current booking + day rows for ``reversion_snapshot`` (version 1)."""
+    return {
+        "v": 1,
+        "seat_id": booking.seat_id,
+        "start_date": booking.start_date.isoformat(),
+        "end_date": booking.end_date.isoformat(),
+        "access_type": booking.access_type,
+        "start_minute": booking.start_minute,
+        "end_minute": booking.end_minute,
+        "category": booking.category,
+        "duration_days": booking.duration_days,
+        "final_price": str(Decimal(booking.final_price).quantize(_MONEY_Q)),
+        "price_breakdown": dict(booking.price_breakdown or {}),
+        "day_rows": [
+            {
+                "seat_id": int(row.seat_id),
+                "booking_date": row.booking_date.isoformat(),
+                "start_minute": int(row.start_minute),
+                "end_minute": int(row.end_minute),
+            }
+            for row in (booking.day_slots or [])
+        ],
+    }
 
 
 def _money(value: Decimal | int | str | None) -> str:

@@ -53,6 +53,11 @@ _ADDITIVE_COLUMN_PATCHES: list[tuple[str, str, str]] = [
         # Use TRUE not 1 — PostgreSQL rejects integer default on BOOLEAN columns.
         "ALTER TABLE seats ADD COLUMN is_enabled BOOLEAN NOT NULL DEFAULT TRUE",
     ),
+    (
+        "bookings",
+        "reversion_snapshot",
+        "ALTER TABLE bookings ADD COLUMN reversion_snapshot TEXT",
+    ),
 ]
 
 

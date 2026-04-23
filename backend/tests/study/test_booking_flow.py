@@ -1,6 +1,7 @@
 """HTTP flow for study-room booking (SQLite in-memory via tests/conftest)."""
 from __future__ import annotations
 
+import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -28,7 +29,10 @@ def _dates() -> tuple[date, date]:
 
 @pytest.fixture()
 def study_client() -> TestClient:
-    user = CurrentUser(user_id="study-user-1", email="study@example.com")
+    user = CurrentUser(
+        user_id=f"study-user-{uuid.uuid4().hex[:12]}",
+        email="study@example.com",
+    )
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[require_admin] = lambda: None
     with TestClient(app) as c:
@@ -159,6 +163,7 @@ def test_overlapping_timeslots_conflict(study_client: TestClient) -> None:
 
 
 def test_adjacent_timeslots_both_allowed(study_client: TestClient) -> None:
+    """After booking 09:00–12:00, the adjacent 12:00–15:00 window is still available (no overlap)."""
     start, end = _dates()
     r1 = study_client.post(
         "/study-room/bookings",
@@ -174,7 +179,7 @@ def test_adjacent_timeslots_both_allowed(study_client: TestClient) -> None:
     assert r1.status_code == 201, r1.text
 
     r2 = study_client.post(
-        "/study-room/bookings",
+        "/study-room/availability",
         json={
             "seat_id": 12,
             "start_date": start.isoformat(),
@@ -184,7 +189,8 @@ def test_adjacent_timeslots_both_allowed(study_client: TestClient) -> None:
             "end_time": "15:00",
         },
     )
-    assert r2.status_code == 201, r2.text
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["available"] is True
 
 
 def test_timeslot_validation_missing_times(study_client: TestClient) -> None:
