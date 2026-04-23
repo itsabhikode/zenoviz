@@ -153,26 +153,9 @@ interface NavItem {
           </mat-menu>
         </header>
 
-        <main class="content" [class.content--nav]="isHandset()">
+        <main class="content">
           <router-outlet />
         </main>
-
-        @if (isHandset()) {
-          <nav class="bottom-nav" aria-label="Primary">
-            @for (item of navItems(); track item.path) {
-              <a
-                class="bottom-nav__item"
-                [routerLink]="item.path"
-                routerLinkActive="active"
-                [routerLinkActiveOptions]="{ exact: false }"
-                (click)="closeDrawerOnNavigate()"
-              >
-                <mat-icon class="bottom-nav__icon">{{ item.icon }}</mat-icon>
-                <span class="bottom-nav__label">{{ item.label }}</span>
-              </a>
-            }
-          </nav>
-        }
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
@@ -420,65 +403,9 @@ interface NavItem {
         flex: 1;
         min-height: 0;
         overflow-x: clip;
-        /* Keep vertical scroll in main so padding-bottom is included at scroll end. */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-      }
-      .content--nav {
-        /* Fixed bottom nav: icon+label+padding is often >56px; add gap so CTAs are not under the bar. */
-        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-      }
-
-      .bottom-nav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 9;
-        display: flex;
-        justify-content: space-around;
-        align-items: stretch;
-        min-height: calc(56px + env(safe-area-inset-bottom, 0px));
         padding-bottom: env(safe-area-inset-bottom, 0px);
-        background: rgba(255, 255, 255, 0.94);
-        backdrop-filter: saturate(1.3) blur(16px);
-        border-top: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
-      }
-      .bottom-nav__item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 2px;
-        max-width: 160px;
-        margin: 0 auto;
-        padding: 8px 4px;
-        text-decoration: none;
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        min-height: 48px;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .bottom-nav__item.active {
-        color: #7c3aed;
-      }
-      .bottom-nav__icon {
-        font-size: 24px !important;
-        width: 24px !important;
-        height: 24px !important;
-      }
-      .bottom-nav__label {
-        text-align: center;
-        line-height: 1.15;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        padding: 0 2px;
       }
     `,
   ],
