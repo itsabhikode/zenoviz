@@ -363,3 +363,84 @@ def test_update_pricing(study_client: TestClient) -> None:
     assert body["reservation_timeout_minutes"] == 45
     assert body["business_open_time"] == "08:00:00"
     assert body["business_close_time"] == "22:00:00"
+
+
+def test_booking_with_locker(study_client: TestClient) -> None:
+    """Booking created with locker has locker_fee > 0 in breakdown and with_locker=True."""
+    # First set locker pricing via admin endpoint
+    study_client.put(
+        "/admin/study-room/pricing",
+        json={
+            "daily_base_price": "100",
+            "weekly_base_price": "500",
+            "monthly_base_price": "1000",
+            "daily_discount_percent": "0",
+            "weekly_discount_percent": "0",
+            "monthly_discount_percent": "0",
+            "anytime_surcharge_percent": "0",
+            "locker_daily_price": "50",
+            "locker_weekly_price": "200",
+            "locker_monthly_price": "600",
+            "reservation_timeout_minutes": 30,
+            "business_open_time": "09:00",
+            "business_close_time": "21:00",
+        },
+    )
+
+    start, end = _dates()
+    # Check availability with locker
+    r = study_client.post(
+        "/study-room/availability",
+        json={
+            "seat_id": 10,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "access_type": "timeslot",
+            "start_time": "09:00",
+            "end_time": "12:00",
+            "with_locker": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["available"] is True
+    assert Decimal(body["breakdown"]["locker_fee"]) == Decimal("50.00")
+    assert Decimal(body["final_price"]) == Decimal("150.00")
+
+    # Create booking with locker
+    r2 = study_client.post(
+        "/study-room/bookings",
+        json={
+            "seat_id": 10,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "access_type": "timeslot",
+            "start_time": "09:00",
+            "end_time": "12:00",
+            "with_locker": True,
+        },
+    )
+    assert r2.status_code == 201, r2.text
+    b = r2.json()
+    assert b["with_locker"] is True
+    assert Decimal(b["breakdown"]["locker_fee"]) == Decimal("50.00")
+    assert Decimal(b["final_price"]) == Decimal("150.00")
+
+
+def test_booking_without_locker_has_zero_fee(study_client: TestClient) -> None:
+    start, end = _dates()
+    r = study_client.post(
+        "/study-room/bookings",
+        json={
+            "seat_id": 11,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "access_type": "timeslot",
+            "start_time": "10:00",
+            "end_time": "13:00",
+        },
+    )
+    assert r.status_code == 201, r.text
+    b = r.json()
+    assert b["with_locker"] is False
+    assert b["breakdown"]["locker_fee"] == "0"
