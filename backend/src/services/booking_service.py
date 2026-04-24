@@ -66,6 +66,9 @@ def _snapshot_from_pricing(row: PricingConfig) -> PricingConfigSnapshot:
         weekly_discount_percent=row.weekly_discount_percent,
         monthly_discount_percent=row.monthly_discount_percent,
         anytime_surcharge_percent=row.anytime_surcharge_percent,
+        locker_daily_price=row.locker_daily_price,
+        locker_weekly_price=row.locker_weekly_price,
+        locker_monthly_price=row.locker_monthly_price,
     )
 
 
@@ -79,6 +82,7 @@ def _breakdown_response(b: dict[str, Any]) -> PriceBreakdownResponse:
         anytime_surcharge_percent=str(b["anytime_surcharge_percent"]),
         surcharge=str(b["surcharge"]),
         final_price=str(b["final_price"]),
+        locker_fee=str(b.get("locker_fee", "0")),
     )
 
 
@@ -212,6 +216,7 @@ class BookingService:
             category=category,
             access_type=access,
             cfg=snap,
+            with_locker=body.with_locker,
         )
         seat_row = await self._repo.get_seat(body.seat_id)
         if seat_row is None:
@@ -266,6 +271,7 @@ class BookingService:
             category=category,
             access_type=access,
             cfg=snap,
+            with_locker=body.with_locker,
         )
         dates = iter_booking_dates(body.start_date, body.end_date)
         now = _utcnow()
@@ -308,6 +314,7 @@ class BookingService:
             status=BookingStatus.RESERVED.value,
             reserved_until=reserved_until,
             final_price=final_price,
+            with_locker=body.with_locker,
             price_breakdown=breakdown_dict,
             payment_proof_path=None,
             created_at=now,
@@ -356,7 +363,7 @@ class BookingService:
         )
         snap = _snapshot_from_pricing(pricing)
         new_final, new_breakdown = compute_stored_breakdown(
-            category=category, access_type=access, cfg=snap,
+            category=category, access_type=access, cfg=snap, with_locker=body.with_locker,
         )
 
         seat = await self._repo.lock_seat_row(body.seat_id)
@@ -420,6 +427,7 @@ class BookingService:
         booking.category = category.value
         booking.duration_days = days
         booking.final_price = new_final
+        booking.with_locker = body.with_locker
         booking.price_breakdown = new_breakdown
         booking.updated_at = now
 
@@ -575,6 +583,9 @@ class BookingService:
             weekly_discount_percent=body.weekly_discount_percent,
             monthly_discount_percent=body.monthly_discount_percent,
             anytime_surcharge_percent=body.anytime_surcharge_percent,
+            locker_daily_price=body.locker_daily_price,
+            locker_weekly_price=body.locker_weekly_price,
+            locker_monthly_price=body.locker_monthly_price,
             reservation_timeout_minutes=body.reservation_timeout_minutes,
             business_open_minute=open_min,
             business_close_minute=close_min,
@@ -746,6 +757,7 @@ def booking_to_response(b: Booking) -> dict[str, Any]:
         "final_price": _money(final),
         "paid_amount": _money(paid),
         "amount_due": _money(due),
+        "with_locker": b.with_locker,
         "breakdown": b.price_breakdown,
         "payment_proof_path": b.payment_proof_path,
         "created_at": b.created_at,
@@ -802,6 +814,9 @@ def pricing_to_response(p: PricingConfig) -> PricingConfigResponse:
         weekly_discount_percent=str(p.weekly_discount_percent),
         monthly_discount_percent=str(p.monthly_discount_percent),
         anytime_surcharge_percent=str(p.anytime_surcharge_percent),
+        locker_daily_price=str(p.locker_daily_price),
+        locker_weekly_price=str(p.locker_weekly_price),
+        locker_monthly_price=str(p.locker_monthly_price),
         reservation_timeout_minutes=p.reservation_timeout_minutes,
         business_open_time=minute_to_time(p.business_open_minute),
         business_close_time=minute_to_time(p.business_close_minute),

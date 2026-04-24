@@ -23,6 +23,7 @@ class AvailabilityCheckRequest(BaseModel):
         None,
         description="HH:MM, required when access_type=timeslot",
     )
+    with_locker: bool = False
 
 
 class PriceBreakdownResponse(BaseModel):
@@ -34,6 +35,7 @@ class PriceBreakdownResponse(BaseModel):
     anytime_surcharge_percent: str
     surcharge: str
     final_price: str
+    locker_fee: str = "0"
 
 
 class AvailabilityCheckResponse(BaseModel):
@@ -79,6 +81,7 @@ class CreateBookingRequest(BaseModel):
     access_type: AccessTypeApi
     start_time: time | None = None
     end_time: time | None = None
+    with_locker: bool = False
 
 
 class UserSummaryResponse(BaseModel):
@@ -115,6 +118,7 @@ class BookingResponse(BaseModel):
     # `amount_due` as the top-up the user still owes.
     paid_amount: str = "0"
     amount_due: str = "0"
+    with_locker: bool = False
     breakdown: dict[str, Any]
     payment_proof_path: str | None
     created_at: datetime
@@ -132,6 +136,9 @@ class UpdatePricingRequest(BaseModel):
     weekly_discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     monthly_discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     anytime_surcharge_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
+    locker_daily_price: Decimal = Field(default=Decimal("0"), ge=0)
+    locker_weekly_price: Decimal = Field(default=Decimal("0"), ge=0)
+    locker_monthly_price: Decimal = Field(default=Decimal("0"), ge=0)
     reservation_timeout_minutes: int = Field(..., ge=1, le=10080)
     business_open_time: time = Field(
         default=time(9, 0),
@@ -183,6 +190,9 @@ class PricingConfigResponse(BaseModel):
     weekly_discount_percent: str
     monthly_discount_percent: str
     anytime_surcharge_percent: str
+    locker_daily_price: str
+    locker_weekly_price: str
+    locker_monthly_price: str
     reservation_timeout_minutes: int
     business_open_time: time
     business_close_time: time
