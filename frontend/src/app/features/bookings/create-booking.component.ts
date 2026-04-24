@@ -250,30 +250,9 @@ function addThreeHours(hhmm: string): string | null {
 
                 <dl class="invoice-lines">
                   <div class="invoice-line">
-                    <dt>Base price</dt>
-                    <dd>{{ nprPrefix }} {{ formatNpr(a.breakdown.base_price) }}</dd>
+                    <dt>Price</dt>
+                    <dd>{{ nprPrefix }} {{ formatNpr(a.breakdown.base) }}</dd>
                   </div>
-                  @if (hasDiscount(a)) {
-                    <div class="invoice-line">
-                      <dt>
-                        Discount
-                        <span class="line-meta">({{ a.breakdown.discount_percent }}%)</span>
-                      </dt>
-                      <dd class="negative"
-                        >−{{ nprPrefix }} {{ formatNpr(discountAmount(a), 2) }}</dd>
-                    </div>
-                  }
-                  @if (hasSurcharge(a)) {
-                    <div class="invoice-line">
-                      <dt>
-                        ANYTIME surcharge
-                        <span class="line-meta"
-                          >({{ a.breakdown.anytime_surcharge_percent }}%)</span
-                        >
-                      </dt>
-                      <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.surcharge) }}</dd>
-                    </div>
-                  }
                   @if (hasLockerFee(a)) {
                     <div class="invoice-line">
                       <dt>Locker</dt>
@@ -884,11 +863,6 @@ export class CreateBookingComponent {
     this.onStartTimeChange();
   }
 
-  hasSurcharge(a: AvailabilityResponse): boolean {
-    const n = parseFloat(a.breakdown.surcharge);
-    return Number.isFinite(n) && n > 0;
-  }
-
   hasLockerFee(a: AvailabilityResponse): boolean {
     const n = parseFloat(a.breakdown.locker_fee);
     return Number.isFinite(n) && n > 0;
@@ -1056,19 +1030,6 @@ export class CreateBookingComponent {
     const start = this.form.controls.start_time.value;
     const slot = this.slotOptions.find((s) => s.start === start);
     return slot ? `${slot.start} – ${slot.end} · ${slot.meta}` : '—';
-  }
-
-  hasDiscount(a: AvailabilityResponse): boolean {
-    const n = parseFloat(a.breakdown.discount_percent);
-    return Number.isFinite(n) && n > 0;
-  }
-
-  /** Base price − discounted price; backend returns both, we show the delta. */
-  discountAmount(a: AvailabilityResponse): string {
-    const base = parseFloat(a.breakdown.base_price);
-    const discounted = parseFloat(a.breakdown.discounted_price);
-    if (!Number.isFinite(base) || !Number.isFinite(discounted)) return '0';
-    return Math.max(0, base - discounted).toFixed(2);
   }
 
   private buildRequest(): CreateBookingRequest | null {
