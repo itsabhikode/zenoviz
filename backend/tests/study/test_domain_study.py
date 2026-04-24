@@ -94,3 +94,80 @@ def test_resolve_window_anytime_fills_business_hours() -> None:
 def test_resolve_window_anytime_rejects_times() -> None:
     with pytest.raises(ValueError, match="must not be provided"):
         resolve_window(AccessType.ANYTIME, time(10, 0), time(13, 0), 9 * 60, 21 * 60)
+
+
+def test_locker_fee_zero_when_not_requested() -> None:
+    from decimal import Decimal
+    cfg = PricingConfigSnapshot(
+        daily_base_price=Decimal("100"),
+        weekly_base_price=Decimal("500"),
+        monthly_base_price=Decimal("1000"),
+        daily_discount_percent=Decimal("0"),
+        weekly_discount_percent=Decimal("0"),
+        monthly_discount_percent=Decimal("0"),
+        anytime_surcharge_percent=Decimal("0"),
+        locker_daily_price=Decimal("50"),
+        locker_weekly_price=Decimal("200"),
+        locker_monthly_price=Decimal("600"),
+    )
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg,
+    )
+    assert bd["locker_fee"] == "0"
+    assert final == Decimal("100.00")
+
+
+def test_locker_fee_per_category() -> None:
+    from decimal import Decimal
+    cfg = PricingConfigSnapshot(
+        daily_base_price=Decimal("100"),
+        weekly_base_price=Decimal("500"),
+        monthly_base_price=Decimal("1000"),
+        daily_discount_percent=Decimal("0"),
+        weekly_discount_percent=Decimal("0"),
+        monthly_discount_percent=Decimal("0"),
+        anytime_surcharge_percent=Decimal("0"),
+        locker_daily_price=Decimal("50"),
+        locker_weekly_price=Decimal("200"),
+        locker_monthly_price=Decimal("600"),
+    )
+    final_d, bd_d = compute_stored_breakdown(
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True,
+    )
+    assert bd_d["locker_fee"] == "50.00"
+    assert final_d == Decimal("150.00")
+
+    final_w, bd_w = compute_stored_breakdown(
+        category=PriceCategory.WEEKLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True,
+    )
+    assert bd_w["locker_fee"] == "200.00"
+    assert final_w == Decimal("700.00")
+
+    final_m, bd_m = compute_stored_breakdown(
+        category=PriceCategory.MONTHLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True,
+    )
+    assert bd_m["locker_fee"] == "600.00"
+    assert final_m == Decimal("1600.00")
+
+
+def test_locker_stacks_with_anytime_surcharge() -> None:
+    from decimal import Decimal
+    cfg = PricingConfigSnapshot(
+        daily_base_price=Decimal("100"),
+        weekly_base_price=Decimal("500"),
+        monthly_base_price=Decimal("1000"),
+        daily_discount_percent=Decimal("0"),
+        weekly_discount_percent=Decimal("0"),
+        monthly_discount_percent=Decimal("0"),
+        anytime_surcharge_percent=Decimal("20"),
+        locker_daily_price=Decimal("50"),
+        locker_weekly_price=Decimal("200"),
+        locker_monthly_price=Decimal("600"),
+    )
+    # base=100, surcharge=20, locker=50 → total=170
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.DAILY, access_type=AccessType.ANYTIME, cfg=cfg, with_locker=True,
+    )
+    assert bd["surcharge"] == "20.00"
+    assert bd["locker_fee"] == "50.00"
+    assert final == Decimal("170.00")
