@@ -46,13 +46,12 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
             self._session.add(
                 PricingConfig(
                     is_active=True,
-                    daily_base_price=Decimal("15.00"),
-                    weekly_base_price=Decimal("80.00"),
-                    monthly_base_price=Decimal("250.00"),
-                    daily_discount_percent=Decimal("0"),
-                    weekly_discount_percent=Decimal("5"),
-                    monthly_discount_percent=Decimal("10"),
-                    anytime_surcharge_percent=Decimal("20"),
+                    timeslot_daily_price=Decimal("15.00"),
+                    timeslot_weekly_price=Decimal("80.00"),
+                    timeslot_monthly_price=Decimal("250.00"),
+                    anytime_daily_price=Decimal("20.00"),
+                    anytime_weekly_price=Decimal("100.00"),
+                    anytime_monthly_price=Decimal("300.00"),
                     reservation_timeout_minutes=30,
                     created_at=now,
                 )
