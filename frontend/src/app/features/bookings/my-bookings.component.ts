@@ -206,6 +206,17 @@ import { formatNprAmount, NPR_PREFIX, nprText } from '../../core/currency';
                   <dt>Category</dt>
                   <dd>{{ b.category }}</dd>
                 </div>
+                @if (b.with_locker) {
+                  <div class="detail-row">
+                    <dt></dt>
+                    <dd>
+                      <mat-chip class="locker-chip">
+                        <mat-icon matChipAvatar>lock</mat-icon>
+                        Locker
+                      </mat-chip>
+                    </dd>
+                  </div>
+                }
                 <div class="detail-row">
                   <dt>Price</dt>
                   <dd class="price-block">
@@ -552,6 +563,13 @@ import { formatNprAmount, NPR_PREFIX, nprText } from '../../core/currency';
         background: rgba(245, 158, 11, 0.14);
         padding: 4px 10px;
         border-radius: 999px;
+      }
+      .locker-chip {
+        background: rgba(124, 58, 237, 0.08);
+        color: #6d28d9;
+        border: 1px solid rgba(124, 58, 237, 0.2);
+        font-size: 12px;
+        height: 24px;
       }
     `,
   ],
