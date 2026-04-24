@@ -30,12 +30,13 @@ def price_for(
         if category == PriceCategory.WEEKLY:
             return cfg.timeslot_weekly_price
         return cfg.timeslot_monthly_price
-    else:  # ANYTIME
+    if access_type == AccessType.ANYTIME:
         if category == PriceCategory.DAILY:
             return cfg.anytime_daily_price
         if category == PriceCategory.WEEKLY:
             return cfg.anytime_weekly_price
         return cfg.anytime_monthly_price
+    raise ValueError(f"Unhandled access_type: {access_type!r}")
 
 
 def locker_price_for_category(category: PriceCategory, cfg: PricingConfigSnapshot) -> Decimal:
