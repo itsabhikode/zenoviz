@@ -38,6 +38,9 @@ class PricingConfig(Base):
     weekly_discount_percent: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("0"))
     monthly_discount_percent: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("0"))
     anytime_surcharge_percent: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("0"))
+    locker_daily_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"), server_default="0")
+    locker_weekly_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"), server_default="0")
+    locker_monthly_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"), server_default="0")
     reservation_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30)
     business_open_minute: Mapped[int] = mapped_column(Integer, default=9 * 60)
     business_close_minute: Mapped[int] = mapped_column(Integer, default=21 * 60)
@@ -66,6 +69,7 @@ class Booking(Base):
     paid_amount: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), default=Decimal("0"), server_default="0"
     )
+    with_locker: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     price_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON)
     payment_proof_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: Last fully paid plan, saved before an edit that increases :attr:`final_price` above
