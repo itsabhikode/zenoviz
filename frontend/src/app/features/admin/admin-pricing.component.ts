@@ -117,6 +117,24 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
           <mat-divider />
 
+          <h3>Locker add-on (NPR, Rs.)</h3>
+          <div class="grid3">
+            <mat-form-field appearance="outline">
+              <mat-label>Daily locker</mat-label>
+              <input matInput type="number" formControlName="locker_daily_price" min="0" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Weekly locker</mat-label>
+              <input matInput type="number" formControlName="locker_weekly_price" min="0" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Monthly locker</mat-label>
+              <input matInput type="number" formControlName="locker_monthly_price" min="0" />
+            </mat-form-field>
+          </div>
+
+          <mat-divider />
+
           <h3>Business hours</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
@@ -189,6 +207,9 @@ export class AdminPricingComponent {
     monthly_discount_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
     anytime_surcharge_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
     reservation_timeout_minutes: [30, [Validators.required, Validators.min(1)]],
+    locker_daily_price: [0, [Validators.required, Validators.min(0)]],
+    locker_weekly_price: [0, [Validators.required, Validators.min(0)]],
+    locker_monthly_price: [0, [Validators.required, Validators.min(0)]],
     business_open_time: ['09:00', Validators.required],
     business_close_time: ['21:00', Validators.required],
   });
