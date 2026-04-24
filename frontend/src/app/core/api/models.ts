@@ -60,6 +60,7 @@ export interface AvailabilityRequest {
   access_type: AccessType;
   start_time?: string | null; // HH:mm
   end_time?: string | null;
+  with_locker?: boolean;
 }
 
 /**
@@ -74,6 +75,7 @@ export interface PriceBreakdown {
   discounted_price: string;
   anytime_surcharge_percent: string;
   surcharge: string;
+  locker_fee: string;
   final_price: string;
 }
 
@@ -133,6 +135,7 @@ export interface BookingResponse {
   paid_amount: string;
   /** final_price - paid_amount (clamped at 0); what the user still owes. */
   amount_due: string;
+  with_locker: boolean;
   breakdown: PriceBreakdown;
   payment_proof_path: string | null;
   created_at: string;
@@ -153,6 +156,9 @@ export interface PricingConfigResponse {
   weekly_discount_percent: number;
   monthly_discount_percent: number;
   anytime_surcharge_percent: number;
+  locker_daily_price: number;
+  locker_weekly_price: number;
+  locker_monthly_price: number;
   reservation_timeout_minutes: number;
   business_open_time: string; // HH:mm
   business_close_time: string;
