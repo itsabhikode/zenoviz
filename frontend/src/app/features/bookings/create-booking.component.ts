@@ -17,6 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 
@@ -67,6 +68,7 @@ function addThreeHours(hhmm: string): string | null {
     MatRadioModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatCheckboxModule,
     SeatGridComponent,
   ],
   template: `
@@ -234,6 +236,18 @@ function addThreeHours(hhmm: string): string | null {
                   </div>
                 </dl>
 
+                <div class="locker-toggle">
+                  <mat-checkbox
+                    [checked]="withLocker()"
+                    (change)="withLocker.set($event.checked)"
+                  >
+                    Add locker
+                    @if (lockerUnitPrice(a); as lp) {
+                      <span class="locker-price-hint">+{{ nprPrefix }} {{ formatNpr(lp) }}</span>
+                    }
+                  </mat-checkbox>
+                </div>
+
                 <dl class="invoice-lines">
                   <div class="invoice-line">
                     <dt>Base price</dt>
@@ -258,6 +272,12 @@ function addThreeHours(hhmm: string): string | null {
                         >
                       </dt>
                       <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.surcharge) }}</dd>
+                    </div>
+                  }
+                  @if (hasLockerFee(a)) {
+                    <div class="invoice-line">
+                      <dt>Locker</dt>
+                      <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.locker_fee) }}</dd>
                     </div>
                   }
                 </dl>
@@ -697,6 +717,14 @@ function addThreeHours(hhmm: string): string | null {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
+      .locker-toggle {
+        padding: 4px 0;
+      }
+      .locker-price-hint {
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+        margin-left: 4px;
+      }
     `,
   ],
 })
@@ -732,6 +760,7 @@ export class CreateBookingComponent {
   private priceReqId = 0;
 
   readonly selectedSeat = signal<number | null>(null);
+  readonly withLocker = signal(false);
   readonly unavailableSeats = signal<readonly number[]>([]);
   readonly adminDisabledSeatIds = signal<readonly number[]>([]);
   readonly loadingSeats = signal(false);
@@ -860,6 +889,16 @@ export class CreateBookingComponent {
     return Number.isFinite(n) && n > 0;
   }
 
+  hasLockerFee(a: AvailabilityResponse): boolean {
+    const n = parseFloat(a.breakdown.locker_fee);
+    return Number.isFinite(n) && n > 0;
+  }
+
+  lockerUnitPrice(a: AvailabilityResponse): string | null {
+    if (this.withLocker()) return a.breakdown.locker_fee;
+    return null;
+  }
+
   /** Reactively refetch the seat-availability map whenever the relevant inputs change. */
   private readonly seatMapEffect = effect(() => {
     const ready = this.seatSelectionReady();
@@ -933,6 +972,7 @@ export class CreateBookingComponent {
     const access = this.accessSig();
     const slotStart = this.startTimeSignal();
     const ready = this.seatSelectionReady();
+    const withLocker = this.withLocker();
 
     if (!ready || seat === null || !start || !end) {
       this.availability.set(null);
@@ -952,6 +992,7 @@ export class CreateBookingComponent {
       access_type: access,
       start_time: isTimeslot ? slotStart ?? null : null,
       end_time: isTimeslot && slotStart ? addThreeHours(slotStart) : null,
+      with_locker: withLocker,
     };
 
     const myId = ++this.priceReqId;
@@ -1045,6 +1086,7 @@ export class CreateBookingComponent {
       access_type: v.access_type,
       start_time: isTimeslot ? v.start_time : null,
       end_time: endTime,
+      with_locker: this.withLocker(),
     };
   }
 
