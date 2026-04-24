@@ -75,7 +75,10 @@ def _breakdown_response(b: dict[str, Any]) -> PriceBreakdownResponse:
     return PriceBreakdownResponse(
         category=str(b["category"]),
         access_type=str(b["access_type"]),
+        duration_days=str(b.get("duration_days", "1")),
+        per_day_rate=str(b.get("per_day_rate", b.get("base", "0"))),
         base=str(b.get("base", b.get("base_price", "0"))),
+        locker_per_day=str(b.get("locker_per_day", "0.00")),
         locker_fee=str(b.get("locker_fee", "0")),
         total=str(b.get("total", b.get("final_price", "0"))),
     )
@@ -211,6 +214,7 @@ class BookingService:
             category=category,
             access_type=access,
             cfg=snap,
+            duration_days=days,
             with_locker=body.with_locker,
         )
         seat_row = await self._repo.get_seat(body.seat_id)
@@ -266,6 +270,7 @@ class BookingService:
             category=category,
             access_type=access,
             cfg=snap,
+            duration_days=days,
             with_locker=body.with_locker,
         )
         dates = iter_booking_dates(body.start_date, body.end_date)
@@ -358,7 +363,8 @@ class BookingService:
         )
         snap = _snapshot_from_pricing(pricing)
         new_final, new_breakdown = compute_stored_breakdown(
-            category=category, access_type=access, cfg=snap, with_locker=body.with_locker,
+            category=category, access_type=access, cfg=snap,
+            duration_days=days, with_locker=body.with_locker,
         )
 
         seat = await self._repo.lock_seat_row(body.seat_id)

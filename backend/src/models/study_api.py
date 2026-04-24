@@ -29,7 +29,10 @@ class AvailabilityCheckRequest(BaseModel):
 class PriceBreakdownResponse(BaseModel):
     category: str
     access_type: str
+    duration_days: str = "1"
+    per_day_rate: str = "0"
     base: str
+    locker_per_day: str = "0.00"
     locker_fee: str = "0"
     total: str
 

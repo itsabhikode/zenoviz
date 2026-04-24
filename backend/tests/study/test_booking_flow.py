@@ -403,8 +403,9 @@ def test_booking_with_locker(study_client: TestClient) -> None:
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["available"] is True
-    assert Decimal(body["breakdown"]["locker_fee"]) == Decimal("50.00")
-    assert Decimal(body["final_price"]) == Decimal("150.00")
+    # _dates() spans 3 days (start + 2), so locker_fee = 50 * 3 = 150, base = 100 * 3 = 300, total = 450
+    assert Decimal(body["breakdown"]["locker_fee"]) == Decimal("150.00")
+    assert Decimal(body["final_price"]) == Decimal("450.00")
 
     # Create booking with locker
     r2 = study_client.post(
@@ -422,8 +423,8 @@ def test_booking_with_locker(study_client: TestClient) -> None:
     assert r2.status_code == 201, r2.text
     b = r2.json()
     assert b["with_locker"] is True
-    assert Decimal(b["breakdown"]["locker_fee"]) == Decimal("50.00")
-    assert Decimal(b["final_price"]) == Decimal("150.00")
+    assert Decimal(b["breakdown"]["locker_fee"]) == Decimal("150.00")
+    assert Decimal(b["final_price"]) == Decimal("450.00")
 
 
 def test_booking_without_locker_has_zero_fee(study_client: TestClient) -> None:
