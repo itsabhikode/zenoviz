@@ -57,7 +57,7 @@ def _cfg(
 def test_timeslot_uses_timeslot_price() -> None:
     cfg = _cfg(ts_daily="15.00", at_daily="20.00")
     final, bd = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, duration_days=1
     )
     assert final == Decimal("15.00")
     assert bd["base"] == "15.00"
@@ -68,7 +68,7 @@ def test_timeslot_uses_timeslot_price() -> None:
 def test_anytime_uses_anytime_price() -> None:
     cfg = _cfg(ts_daily="15.00", at_daily="20.00")
     final, bd = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.ANYTIME, cfg=cfg
+        category=PriceCategory.DAILY, access_type=AccessType.ANYTIME, cfg=cfg, duration_days=1
     )
     assert final == Decimal("20.00")
     assert bd["base"] == "20.00"
@@ -78,30 +78,30 @@ def test_anytime_uses_anytime_price() -> None:
 def test_weekly_and_monthly_categories() -> None:
     cfg = _cfg(ts_weekly="80.00", at_weekly="100.00", ts_monthly="250.00", at_monthly="300.00")
     final_w, _ = compute_stored_breakdown(
-        category=PriceCategory.WEEKLY, access_type=AccessType.TIMESLOT, cfg=cfg
+        category=PriceCategory.WEEKLY, access_type=AccessType.TIMESLOT, cfg=cfg, duration_days=7
     )
-    assert final_w == Decimal("80.00")
+    assert final_w == Decimal("560.00")   # 80.00 × 7
 
     final_aw, _ = compute_stored_breakdown(
-        category=PriceCategory.WEEKLY, access_type=AccessType.ANYTIME, cfg=cfg
+        category=PriceCategory.WEEKLY, access_type=AccessType.ANYTIME, cfg=cfg, duration_days=7
     )
-    assert final_aw == Decimal("100.00")
+    assert final_aw == Decimal("700.00")  # 100.00 × 7
 
     final_m, _ = compute_stored_breakdown(
-        category=PriceCategory.MONTHLY, access_type=AccessType.TIMESLOT, cfg=cfg
+        category=PriceCategory.MONTHLY, access_type=AccessType.TIMESLOT, cfg=cfg, duration_days=30
     )
-    assert final_m == Decimal("250.00")
+    assert final_m == Decimal("7500.00")  # 250.00 × 30
 
     final_am, _ = compute_stored_breakdown(
-        category=PriceCategory.MONTHLY, access_type=AccessType.ANYTIME, cfg=cfg
+        category=PriceCategory.MONTHLY, access_type=AccessType.ANYTIME, cfg=cfg, duration_days=30
     )
-    assert final_am == Decimal("300.00")
+    assert final_am == Decimal("9000.00") # 300.00 × 30
 
 
 def test_locker_fee_added_to_base() -> None:
     cfg = _cfg(ts_daily="15.00", locker_daily="10.00")
     final, bd = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True, duration_days=1
     )
     assert bd["locker_fee"] == "10.00"
     assert final == Decimal("25.00")
@@ -147,7 +147,7 @@ def test_resolve_window_anytime_rejects_times() -> None:
 def test_locker_fee_zero_when_not_requested() -> None:
     cfg = _cfg(ts_daily="15.00", locker_daily="10.00")
     final, bd = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=False
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=False, duration_days=1
     )
     assert bd["locker_fee"] == "0.00"
     assert final == Decimal("15.00")
@@ -159,26 +159,85 @@ def test_locker_fee_per_category() -> None:
         locker_daily="10.00", locker_weekly="50.00", locker_monthly="150.00",
     )
     _, bd_d = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True, duration_days=1
     )
-    assert bd_d["locker_fee"] == "10.00"
+    assert bd_d["locker_fee"] == "10.00"   # 10.00 × 1
 
     _, bd_w = compute_stored_breakdown(
-        category=PriceCategory.WEEKLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True
+        category=PriceCategory.WEEKLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True, duration_days=7
     )
-    assert bd_w["locker_fee"] == "50.00"
+    assert bd_w["locker_fee"] == "350.00"  # 50.00 × 7
 
     _, bd_m = compute_stored_breakdown(
-        category=PriceCategory.MONTHLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True
+        category=PriceCategory.MONTHLY, access_type=AccessType.TIMESLOT, cfg=cfg, with_locker=True, duration_days=30
     )
-    assert bd_m["locker_fee"] == "150.00"
+    assert bd_m["locker_fee"] == "4500.00" # 150.00 × 30
 
 
 def test_anytime_with_locker() -> None:
     cfg = _cfg(at_daily="20.00", locker_daily="10.00")
     final, bd = compute_stored_breakdown(
-        category=PriceCategory.DAILY, access_type=AccessType.ANYTIME, cfg=cfg, with_locker=True
+        category=PriceCategory.DAILY, access_type=AccessType.ANYTIME, cfg=cfg, with_locker=True, duration_days=1
     )
     assert bd["base"] == "20.00"
     assert bd["locker_fee"] == "10.00"
     assert final == Decimal("30.00")
+
+
+def test_multi_day_weekly_multiplies_rate() -> None:
+    cfg = _cfg(ts_weekly="15.00")
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.WEEKLY,
+        access_type=AccessType.TIMESLOT,
+        cfg=cfg,
+        duration_days=9,
+    )
+    assert final == Decimal("135.00")
+    assert bd["per_day_rate"] == "15.00"
+    assert bd["duration_days"] == 9
+    assert bd["base"] == "135.00"
+    assert bd["locker_fee"] == "0.00"
+    assert bd["total"] == "135.00"
+
+
+def test_multi_day_anytime_multiplies_rate() -> None:
+    cfg = _cfg(at_daily="20.00")
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.DAILY,
+        access_type=AccessType.ANYTIME,
+        cfg=cfg,
+        duration_days=5,
+    )
+    assert final == Decimal("100.00")
+    assert bd["per_day_rate"] == "20.00"
+    assert bd["base"] == "100.00"
+
+
+def test_locker_per_day_multiplied() -> None:
+    cfg = _cfg(ts_weekly="15.00", locker_weekly="10.00")
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.WEEKLY,
+        access_type=AccessType.TIMESLOT,
+        cfg=cfg,
+        duration_days=9,
+        with_locker=True,
+    )
+    assert bd["per_day_rate"] == "15.00"
+    assert bd["locker_per_day"] == "10.00"
+    assert bd["base"] == "135.00"
+    assert bd["locker_fee"] == "90.00"
+    assert final == Decimal("225.00")
+
+
+def test_breakdown_includes_duration_days_key() -> None:
+    cfg = _cfg(ts_daily="15.00")
+    _, bd = compute_stored_breakdown(
+        category=PriceCategory.DAILY,
+        access_type=AccessType.TIMESLOT,
+        cfg=cfg,
+        duration_days=3,
+    )
+    assert bd["duration_days"] == 3
+    assert bd["per_day_rate"] == "15.00"
+    assert bd["base"] == "45.00"
+    assert "locker_per_day" in bd
