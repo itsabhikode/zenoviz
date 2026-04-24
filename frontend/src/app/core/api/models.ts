@@ -70,7 +70,10 @@ export interface AvailabilityRequest {
 export interface PriceBreakdown {
   category: string;
   access_type: string;
+  duration_days: string;
+  per_day_rate: string;
   base: string;
+  locker_per_day: string;
   locker_fee: string;
   total: string;
 }

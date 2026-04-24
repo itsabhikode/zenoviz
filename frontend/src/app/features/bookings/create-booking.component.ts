@@ -250,12 +250,12 @@ function addThreeHours(hhmm: string): string | null {
 
                 <dl class="invoice-lines">
                   <div class="invoice-line">
-                    <dt>Price</dt>
+                    <dt>{{ nprPrefix }} {{ formatNpr(a.breakdown.per_day_rate) }}/day × {{ a.breakdown.duration_days }} days</dt>
                     <dd>{{ nprPrefix }} {{ formatNpr(a.breakdown.base) }}</dd>
                   </div>
                   @if (hasLockerFee(a)) {
                     <div class="invoice-line">
-                      <dt>Locker</dt>
+                      <dt>Locker {{ nprPrefix }} {{ formatNpr(a.breakdown.locker_per_day) }}/day × {{ a.breakdown.duration_days }} days</dt>
                       <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.locker_fee) }}</dd>
                     </div>
                   }

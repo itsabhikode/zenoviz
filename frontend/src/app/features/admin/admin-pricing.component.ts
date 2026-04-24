@@ -38,7 +38,7 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
       <mat-card>
         <form [formGroup]="form" (ngSubmit)="save()" class="form">
-          <h3>3-Hour (Timeslot) prices (NPR, Rs.)</h3>
+          <h3>3-Hour (Timeslot) prices (NPR/day)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily</mat-label>
@@ -56,7 +56,7 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
           <mat-divider />
 
-          <h3>Anytime prices (NPR, Rs.)</h3>
+          <h3>Anytime prices (NPR/day)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily</mat-label>
@@ -89,7 +89,7 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
           <mat-divider />
 
-          <h3>Locker add-on (NPR, Rs.)</h3>
+          <h3>Locker add-on (NPR/day)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily locker</mat-label>
