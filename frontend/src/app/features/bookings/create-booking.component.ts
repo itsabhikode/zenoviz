@@ -869,7 +869,7 @@ export class CreateBookingComponent {
   }
 
   lockerUnitPrice(a: AvailabilityResponse): string | null {
-    if (this.withLocker()) return a.breakdown.locker_fee;
+    if (this.withLocker()) return a.breakdown.locker_per_day;
     return null;
   }
 
