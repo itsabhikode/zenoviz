@@ -38,55 +38,37 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
       <mat-card>
         <form [formGroup]="form" (ngSubmit)="save()" class="form">
-          <h3>Base prices (NPR, Rs.)</h3>
+          <h3>3-Hour (Timeslot) prices (NPR, Rs.)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily</mat-label>
-              <input matInput type="number" formControlName="daily_base_price" min="0" />
+              <input matInput type="number" formControlName="timeslot_daily_price" min="0" />
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Weekly</mat-label>
-              <input matInput type="number" formControlName="weekly_base_price" min="0" />
+              <input matInput type="number" formControlName="timeslot_weekly_price" min="0" />
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Monthly</mat-label>
-              <input matInput type="number" formControlName="monthly_base_price" min="0" />
+              <input matInput type="number" formControlName="timeslot_monthly_price" min="0" />
             </mat-form-field>
           </div>
 
           <mat-divider />
 
-          <h3>Discounts (%)</h3>
+          <h3>Anytime prices (NPR, Rs.)</h3>
           <div class="grid3">
             <mat-form-field appearance="outline">
               <mat-label>Daily</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="daily_discount_percent"
-                min="0"
-                max="100"
-              />
+              <input matInput type="number" formControlName="anytime_daily_price" min="0" />
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Weekly</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="weekly_discount_percent"
-                min="0"
-                max="100"
-              />
+              <input matInput type="number" formControlName="anytime_weekly_price" min="0" />
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Monthly</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="monthly_discount_percent"
-                min="0"
-                max="100"
-              />
+              <input matInput type="number" formControlName="anytime_monthly_price" min="0" />
             </mat-form-field>
           </div>
 
@@ -94,16 +76,6 @@ import { AdminStudyService } from '../../core/api/admin-study.service';
 
           <h3>Rules</h3>
           <div class="grid3">
-            <mat-form-field appearance="outline">
-              <mat-label>ANYTIME surcharge (%)</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="anytime_surcharge_percent"
-                min="0"
-                max="100"
-              />
-            </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Reservation timeout (min)</mat-label>
               <input
@@ -199,13 +171,12 @@ export class AdminPricingComponent {
   readonly saving = signal(false);
 
   readonly form = this.fb.nonNullable.group({
-    daily_base_price: [0, [Validators.required, Validators.min(0)]],
-    weekly_base_price: [0, [Validators.required, Validators.min(0)]],
-    monthly_base_price: [0, [Validators.required, Validators.min(0)]],
-    daily_discount_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    weekly_discount_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    monthly_discount_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    anytime_surcharge_percent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
+    timeslot_daily_price: [0, [Validators.required, Validators.min(0)]],
+    timeslot_weekly_price: [0, [Validators.required, Validators.min(0)]],
+    timeslot_monthly_price: [0, [Validators.required, Validators.min(0)]],
+    anytime_daily_price: [0, [Validators.required, Validators.min(0)]],
+    anytime_weekly_price: [0, [Validators.required, Validators.min(0)]],
+    anytime_monthly_price: [0, [Validators.required, Validators.min(0)]],
     reservation_timeout_minutes: [30, [Validators.required, Validators.min(1)]],
     locker_daily_price: [0, [Validators.required, Validators.min(0)]],
     locker_weekly_price: [0, [Validators.required, Validators.min(0)]],
