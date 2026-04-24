@@ -707,6 +707,7 @@ def _reversion_snapshot_v1(booking: Booking) -> dict[str, Any]:
         "duration_days": booking.duration_days,
         "final_price": str(Decimal(booking.final_price).quantize(_MONEY_Q)),
         "price_breakdown": dict(booking.price_breakdown or {}),
+        "with_locker": booking.with_locker,
         "day_rows": [
             {
                 "seat_id": int(row.seat_id),
