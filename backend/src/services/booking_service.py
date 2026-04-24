@@ -76,11 +76,11 @@ def _breakdown_response(b: dict[str, Any]) -> PriceBreakdownResponse:
         category=str(b["category"]),
         access_type=str(b["access_type"]),
         duration_days=str(b.get("duration_days", "1")),
-        per_day_rate=str(b.get("per_day_rate", b.get("base", "0"))),
-        base=str(b.get("base", b.get("base_price", "0"))),
+        per_day_rate=str(b.get("per_day_rate", "0")),
+        base=str(b.get("base", "0")),
         locker_per_day=str(b.get("locker_per_day", "0.00")),
         locker_fee=str(b.get("locker_fee", "0")),
-        total=str(b.get("total", b.get("final_price", "0"))),
+        total=str(b.get("total", "0")),
     )
 
 
