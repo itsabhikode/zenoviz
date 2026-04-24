@@ -52,20 +52,27 @@ def compute_stored_breakdown(
     category: PriceCategory,
     access_type: AccessType,
     cfg: PricingConfigSnapshot,
+    duration_days: int,
     with_locker: bool = False,
 ) -> tuple[Decimal, dict[str, Any]]:
-    base = price_for(access_type, category, cfg).quantize(Decimal("0.01"))
+    per_day_rate = price_for(access_type, category, cfg).quantize(Decimal("0.01"))
+    base = (per_day_rate * duration_days).quantize(Decimal("0.01"))
 
+    locker_per_day = Decimal("0").quantize(Decimal("0.01"))
     locker_fee = Decimal("0").quantize(Decimal("0.01"))
     if with_locker:
-        locker_fee = locker_price_for_category(category, cfg).quantize(Decimal("0.01"))
+        locker_per_day = locker_price_for_category(category, cfg).quantize(Decimal("0.01"))
+        locker_fee = (locker_per_day * duration_days).quantize(Decimal("0.01"))
 
     final_price = (base + locker_fee).quantize(Decimal("0.01"))
 
     breakdown: dict[str, Any] = {
         "category": category.value,
         "access_type": access_type.value,
+        "duration_days": duration_days,
+        "per_day_rate": str(per_day_rate),
         "base": str(base),
+        "locker_per_day": str(locker_per_day),
         "locker_fee": str(locker_fee),
         "total": str(final_price),
     }
