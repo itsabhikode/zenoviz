@@ -315,6 +315,7 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
                 duration_days=int(snap["duration_days"]),
                 final_price=target_final,
                 price_breakdown=snap.get("price_breakdown") or {},
+                with_locker=bool(snap.get("with_locker", False)),
                 status=BookingStatus.COMPLETED.value,
                 reserved_until=None,
                 reversion_snapshot=None,
