@@ -13,6 +13,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -75,6 +76,7 @@ function toHhmm(t: string | null | undefined): string | null {
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    MatCheckboxModule,
     MatRadioModule,
     MatSnackBarModule,
     MatTooltipModule,
@@ -230,6 +232,15 @@ function toHhmm(t: string | null | undefined): string | null {
                   </div>
                 }
 
+                <div class="locker-toggle">
+                  <mat-checkbox
+                    [checked]="withLocker()"
+                    (change)="withLocker.set($event.checked)"
+                  >
+                    Add locker
+                  </mat-checkbox>
+                </div>
+
                 <dl class="invoice-lines">
                   <div class="invoice-line">
                     <dt>Original plan</dt>
@@ -243,6 +254,12 @@ function toHhmm(t: string | null | undefined): string | null {
                     <dt>New plan</dt>
                     <dd>{{ nprPrefix }} {{ formatNpr(a.final_price) }}</dd>
                   </div>
+                  @if (hasLockerFee(a)) {
+                    <div class="invoice-line">
+                      <dt>Locker</dt>
+                      <dd>+{{ nprPrefix }} {{ formatNpr(a.breakdown.locker_fee) }}</dd>
+                    </div>
+                  }
                 </dl>
 
                 @if (downgradeBlocked()) {
@@ -565,6 +582,9 @@ function toHhmm(t: string | null | undefined): string | null {
         font-size: 20px;
         font-variant-numeric: tabular-nums;
       }
+      .locker-toggle {
+        padding: 4px 0;
+      }
       .actions {
         display: flex;
         gap: 12px;
@@ -599,6 +619,7 @@ export class EditBookingComponent {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly original = signal<BookingResponse | null>(null);
+  readonly withLocker = signal(false);
   readonly availability = signal<AvailabilityResponse | null>(null);
   readonly selectedSeat = signal<number | null>(null);
   readonly unavailableSeats = signal<readonly number[]>([]);
@@ -771,6 +792,7 @@ export class EditBookingComponent {
       { emitEvent: true },
     );
     this.selectedSeat.set(b.seat_id);
+    this.withLocker.set(b.with_locker);
   }
 
   selectSlot(start: string): void {
@@ -841,6 +863,7 @@ export class EditBookingComponent {
     const access = this.accessSig();
     const slotStart = this.startTimeSignal();
     const ready = this.seatSelectionReady();
+    const withLocker = this.withLocker();
 
     if (!ready || seat === null || !start || !end) {
       this.availability.set(null);
@@ -860,6 +883,7 @@ export class EditBookingComponent {
       access_type: access,
       start_time: isTimeslot ? slotStart ?? null : null,
       end_time: isTimeslot && slotStart ? addThreeHours(slotStart) : null,
+      with_locker: withLocker,
     };
 
     const myId = ++this.priceReqId;
@@ -874,6 +898,11 @@ export class EditBookingComponent {
       },
     });
   });
+
+  hasLockerFee(a: AvailabilityResponse): boolean {
+    const n = parseFloat(a.breakdown.locker_fee);
+    return Number.isFinite(n) && n > 0;
+  }
 
   paidAmountNumber(b: BookingResponse): number {
     const n = Number(b.paid_amount);
@@ -896,6 +925,7 @@ export class EditBookingComponent {
       access_type: v.access_type,
       start_time: isTimeslot ? v.start_time : null,
       end_time: isTimeslot ? addThreeHours(v.start_time) : null,
+      with_locker: this.withLocker(),
     };
 
     this.saving.set(true);
