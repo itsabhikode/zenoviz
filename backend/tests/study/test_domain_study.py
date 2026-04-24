@@ -1,4 +1,5 @@
 """Pure domain rules for study room booking."""
+from decimal import Decimal
 from datetime import date, time
 
 import pytest
@@ -30,8 +31,6 @@ def test_duration_invalid() -> None:
 
 
 def test_pricing_discount_and_anytime_surcharge() -> None:
-    from decimal import Decimal
-
     cfg = PricingConfigSnapshot(
         daily_base_price=Decimal("100"),
         weekly_base_price=Decimal("500"),
@@ -97,7 +96,6 @@ def test_resolve_window_anytime_rejects_times() -> None:
 
 
 def test_locker_fee_zero_when_not_requested() -> None:
-    from decimal import Decimal
     cfg = PricingConfigSnapshot(
         daily_base_price=Decimal("100"),
         weekly_base_price=Decimal("500"),
@@ -118,7 +116,6 @@ def test_locker_fee_zero_when_not_requested() -> None:
 
 
 def test_locker_fee_per_category() -> None:
-    from decimal import Decimal
     cfg = PricingConfigSnapshot(
         daily_base_price=Decimal("100"),
         weekly_base_price=Decimal("500"),
@@ -151,7 +148,6 @@ def test_locker_fee_per_category() -> None:
 
 
 def test_locker_stacks_with_anytime_surcharge() -> None:
-    from decimal import Decimal
     cfg = PricingConfigSnapshot(
         daily_base_price=Decimal("100"),
         weekly_base_price=Decimal("500"),
@@ -171,3 +167,22 @@ def test_locker_stacks_with_anytime_surcharge() -> None:
     assert bd["surcharge"] == "20.00"
     assert bd["locker_fee"] == "50.00"
     assert final == Decimal("170.00")
+
+
+def test_locker_fee_zero_price_configured_but_requested() -> None:
+    cfg = PricingConfigSnapshot(
+        daily_base_price=Decimal("100"),
+        weekly_base_price=Decimal("500"),
+        monthly_base_price=Decimal("1000"),
+        daily_discount_percent=Decimal("0"),
+        weekly_discount_percent=Decimal("0"),
+        monthly_discount_percent=Decimal("0"),
+        anytime_surcharge_percent=Decimal("0"),
+        # locker prices intentionally left at default (0)
+    )
+    final, bd = compute_stored_breakdown(
+        category=PriceCategory.DAILY, access_type=AccessType.TIMESLOT,
+        cfg=cfg, with_locker=True,
+    )
+    assert bd["locker_fee"] == "0.00"
+    assert final == Decimal("100.00")
