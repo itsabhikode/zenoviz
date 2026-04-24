@@ -371,16 +371,15 @@ def test_booking_with_locker(study_client: TestClient) -> None:
     study_client.put(
         "/admin/study-room/pricing",
         json={
-            "daily_base_price": "100",
-            "weekly_base_price": "500",
-            "monthly_base_price": "1000",
-            "daily_discount_percent": "0",
-            "weekly_discount_percent": "0",
-            "monthly_discount_percent": "0",
-            "anytime_surcharge_percent": "0",
-            "locker_daily_price": "50",
-            "locker_weekly_price": "200",
-            "locker_monthly_price": "600",
+            "timeslot_daily_price": 100.00,
+            "timeslot_weekly_price": 500.00,
+            "timeslot_monthly_price": 1000.00,
+            "anytime_daily_price": 120.00,
+            "anytime_weekly_price": 600.00,
+            "anytime_monthly_price": 1200.00,
+            "locker_daily_price": 50.00,
+            "locker_weekly_price": 200.00,
+            "locker_monthly_price": 600.00,
             "reservation_timeout_minutes": 30,
             "business_open_time": "09:00",
             "business_close_time": "21:00",
@@ -443,4 +442,4 @@ def test_booking_without_locker_has_zero_fee(study_client: TestClient) -> None:
     assert r.status_code == 201, r.text
     b = r.json()
     assert b["with_locker"] is False
-    assert b["breakdown"]["locker_fee"] == "0"
+    assert b["breakdown"]["locker_fee"] == "0.00"
