@@ -29,13 +29,9 @@ class AvailabilityCheckRequest(BaseModel):
 class PriceBreakdownResponse(BaseModel):
     category: str
     access_type: str
-    base_price: str
-    discount_percent: str
-    discounted_price: str
-    anytime_surcharge_percent: str
-    surcharge: str
-    final_price: str
+    base: str
     locker_fee: str = "0"
+    total: str
 
 
 class AvailabilityCheckResponse(BaseModel):
@@ -129,13 +125,12 @@ class BookingResponse(BaseModel):
 
 
 class UpdatePricingRequest(BaseModel):
-    daily_base_price: Decimal
-    weekly_base_price: Decimal
-    monthly_base_price: Decimal
-    daily_discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
-    weekly_discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
-    monthly_discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
-    anytime_surcharge_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
+    timeslot_daily_price: Decimal = Field(default=Decimal("0"), ge=0)
+    timeslot_weekly_price: Decimal = Field(default=Decimal("0"), ge=0)
+    timeslot_monthly_price: Decimal = Field(default=Decimal("0"), ge=0)
+    anytime_daily_price: Decimal = Field(default=Decimal("0"), ge=0)
+    anytime_weekly_price: Decimal = Field(default=Decimal("0"), ge=0)
+    anytime_monthly_price: Decimal = Field(default=Decimal("0"), ge=0)
     locker_daily_price: Decimal = Field(default=Decimal("0"), ge=0)
     locker_weekly_price: Decimal = Field(default=Decimal("0"), ge=0)
     locker_monthly_price: Decimal = Field(default=Decimal("0"), ge=0)
@@ -183,13 +178,12 @@ class PaymentSettingsResponse(BaseModel):
 class PricingConfigResponse(BaseModel):
     id: UUID
     is_active: bool
-    daily_base_price: str
-    weekly_base_price: str
-    monthly_base_price: str
-    daily_discount_percent: str
-    weekly_discount_percent: str
-    monthly_discount_percent: str
-    anytime_surcharge_percent: str
+    timeslot_daily_price: str
+    timeslot_weekly_price: str
+    timeslot_monthly_price: str
+    anytime_daily_price: str
+    anytime_weekly_price: str
+    anytime_monthly_price: str
     locker_daily_price: str
     locker_weekly_price: str
     locker_monthly_price: str
