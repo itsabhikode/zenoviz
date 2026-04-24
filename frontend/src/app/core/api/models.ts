@@ -70,13 +70,9 @@ export interface AvailabilityRequest {
 export interface PriceBreakdown {
   category: string;
   access_type: string;
-  base_price: string;
-  discount_percent: string;
-  discounted_price: string;
-  anytime_surcharge_percent: string;
-  surcharge: string;
+  base: string;
   locker_fee: string;
-  final_price: string;
+  total: string;
 }
 
 /** Shape matches backend `AvailabilityCheckResponse`. */
@@ -149,13 +145,12 @@ export interface BookingResponse {
 
 // Admin pricing
 export interface PricingConfigResponse {
-  daily_base_price: number;
-  weekly_base_price: number;
-  monthly_base_price: number;
-  daily_discount_percent: number;
-  weekly_discount_percent: number;
-  monthly_discount_percent: number;
-  anytime_surcharge_percent: number;
+  timeslot_daily_price: number;
+  timeslot_weekly_price: number;
+  timeslot_monthly_price: number;
+  anytime_daily_price: number;
+  anytime_weekly_price: number;
+  anytime_monthly_price: number;
   locker_daily_price: number;
   locker_weekly_price: number;
   locker_monthly_price: number;
