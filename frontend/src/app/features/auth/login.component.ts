@@ -34,7 +34,7 @@ import { PricingConfigResponse } from '../../core/api/models';
   ],
 
   template: `
-    <div class="auth-shell">
+    <div class="auth-shell" [class.mobile-login]="showLogin()">
       <aside class="hero">
         <div class="hero-inner">
           <div class="brand">
@@ -90,15 +90,19 @@ import { PricingConfigResponse } from '../../core/api/models';
             </div>
           }
 
-          <a href="#login-card" class="book-now-btn">Book now</a>
+          <button type="button" class="book-now-btn" (click)="showLogin.set(true)">Book now</button>
 
         </div>
       </aside>
 
-      <section class="card-side" id="login-card">
+      <section class="card-side">
         <div class="auth-card-wrap">
           <div class="auth-card">
             <div class="card-head">
+              <button type="button" class="back-to-home" (click)="showLogin.set(false)">
+                <div class="brand-mark-sm"><mat-icon>event_seat</mat-icon></div>
+                <span>Zenoviz</span>
+              </button>
               <h2>Welcome back</h2>
               <p>Sign in to manage your bookings</p>
             </div>
@@ -210,6 +214,12 @@ import { PricingConfigResponse } from '../../core/api/models';
         .auth-shell {
           grid-template-columns: 1fr;
         }
+        /* default mobile: show hero, hide login */
+        .hero { display: block; }
+        .card-side { display: none; }
+        /* after "Book now": hide hero, show login */
+        .auth-shell.mobile-login .hero { display: none; }
+        .auth-shell.mobile-login .card-side { display: grid; min-height: 100dvh; }
       }
       .hero {
         position: relative;
@@ -244,6 +254,8 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .book-now-btn {
         display: none;
+        border: none;
+        cursor: pointer;
         align-self: stretch;
         text-align: center;
         background: #fff;
@@ -252,13 +264,41 @@ import { PricingConfigResponse } from '../../core/api/models';
         font-weight: 600;
         padding: 14px 0;
         border-radius: 10px;
-        text-decoration: none;
         margin-top: 4px;
       }
       @media (max-width: 900px) {
-        .book-now-btn {
-          display: block;
-        }
+        .book-now-btn { display: block; }
+      }
+      .back-to-home {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        margin-bottom: 16px;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--mat-sys-on-surface);
+        letter-spacing: -0.02em;
+      }
+      @media (max-width: 900px) {
+        .back-to-home { display: flex; }
+      }
+      .brand-mark-sm {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--zv-gradient-brand);
+        display: grid;
+        place-items: center;
+      }
+      .brand-mark-sm mat-icon {
+        color: #fff;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
       .brand {
         display: flex;
@@ -522,6 +562,7 @@ export class LoginComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly errorMsg = signal<string | null>(null);
   readonly pricing = signal<PricingConfigResponse | null>(null);
+  readonly showLogin = signal(false);
 
   ngOnInit(): void {
     this.bookings.publicPricing().subscribe({
