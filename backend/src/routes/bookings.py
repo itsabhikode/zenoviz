@@ -15,6 +15,7 @@ from src.models.study_api import (
     BookingResponse,
     CreateBookingRequest,
     PaymentSettingsResponse,
+    PricingConfigResponse,
     SeatsAvailabilityRequest,
     SeatsAvailabilityResponse,
 )
@@ -22,6 +23,7 @@ from src.services.booking_service import (
     BookingService,
     booking_to_response,
     payment_settings_to_response,
+    pricing_to_response,
 )
 
 router = APIRouter(prefix="/study-room", tags=["study-room"])
@@ -29,6 +31,14 @@ router = APIRouter(prefix="/study-room", tags=["study-room"])
 
 def _map_http(exc: ValueError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.get("/pricing", response_model=PricingConfigResponse)
+async def get_public_pricing(
+    svc: Annotated[BookingService, Depends(get_booking_service)],
+) -> PricingConfigResponse:
+    row = await svc.get_active_pricing_public()
+    return pricing_to_response(row)
 
 
 @router.post("/availability", response_model=AvailabilityCheckResponse)

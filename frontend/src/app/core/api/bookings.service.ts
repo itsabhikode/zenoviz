@@ -9,6 +9,7 @@ import {
   BookingResponse,
   CreateBookingRequest,
   PaymentSettingsResponse,
+  PricingConfigResponse,
   SeatsAvailabilityRequest,
   SeatsAvailabilityResponse,
 } from './models';
@@ -64,5 +65,9 @@ export class BookingsService {
     return this.http.get(`${this.base}/payment-settings/qr`, {
       responseType: 'blob',
     });
+  }
+
+  publicPricing(): Observable<PricingConfigResponse> {
+    return this.http.get<PricingConfigResponse>(`${this.base}/pricing`);
   }
 }

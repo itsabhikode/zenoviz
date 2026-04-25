@@ -118,6 +118,11 @@ export const routes: Routes = [
     ],
   },
 
-  { path: '', pathMatch: 'full', redirectTo: 'app/my-bookings' },
-  { path: '**', redirectTo: 'app/my-bookings' },
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/home/home.component').then((m) => m.HomeComponent),
+  },
+  { path: '**', redirectTo: '' },
 ];
