@@ -90,10 +90,12 @@ import { PricingConfigResponse } from '../../core/api/models';
             </div>
           }
 
+          <a href="#login-card" class="book-now-btn">Book now</a>
+
         </div>
       </aside>
 
-      <section class="card-side">
+      <section class="card-side" id="login-card">
         <div class="auth-card-wrap">
           <div class="auth-card">
             <div class="card-head">
@@ -225,11 +227,6 @@ import { PricingConfigResponse } from '../../core/api/models';
           radial-gradient(500px 350px at 80% 80%, rgba(255, 255, 255, 0.14), transparent 60%);
         pointer-events: none;
       }
-      @media (max-width: 900px) {
-        .hero {
-          display: none;
-        }
-      }
       .hero-inner {
         position: relative;
         min-height: 100%;
@@ -238,6 +235,30 @@ import { PricingConfigResponse } from '../../core/api/models';
         flex-direction: column;
         gap: 24px;
         justify-content: center;
+      }
+      @media (max-width: 900px) {
+        .hero-inner {
+          padding: 32px 20px;
+          justify-content: flex-start;
+        }
+      }
+      .book-now-btn {
+        display: none;
+        align-self: stretch;
+        text-align: center;
+        background: #fff;
+        color: #1a1a1a;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 14px 0;
+        border-radius: 10px;
+        text-decoration: none;
+        margin-top: 4px;
+      }
+      @media (max-width: 900px) {
+        .book-now-btn {
+          display: block;
+        }
       }
       .brand {
         display: flex;
