@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   ReactiveFormsModule,
@@ -15,6 +15,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/api/auth.service';
+import { BookingsService } from '../../core/api/bookings.service';
+import { PricingConfigResponse } from '../../core/api/models';
 
 @Component({
   selector: 'zv-login',
@@ -30,6 +32,7 @@ import { AuthService } from '../../core/api/auth.service';
     MatInputModule,
     MatProgressBarModule,
   ],
+
   template: `
     <div class="auth-shell">
       <aside class="hero">
@@ -39,17 +42,53 @@ import { AuthService } from '../../core/api/auth.service';
             <span>Zenoviz</span>
           </div>
           <h1>Book your study seat in seconds.</h1>
-          <p>
-            Reserve a quiet spot by the hour, the week, or the month. Skip the
-            front-desk back-and-forth.
-          </p>
-          <ul class="features">
-            <li><mat-icon>bolt</mat-icon> Live availability</li>
-            <li><mat-icon>verified</mat-icon> Admin-approved payments</li>
-            <li><mat-icon>schedule</mat-icon> Transparent pricing</li>
-          </ul>
-        </div>
-      </aside>
+
+          @if (pricing()) {
+            <div class="pricing-banner">
+
+              <div class="pricing-header">
+                <span class="pricing-title">Study Room pricing</span>
+                <span class="currency-pill">NPR · per day</span>
+              </div>
+
+              <div class="pricing-grid">
+                <div class="pg-cell pg-label"></div>
+                <div class="pg-cell pg-col-head">Daily</div>
+                <div class="pg-cell pg-col-head pg-weekly">Weekly</div>
+                <div class="pg-cell pg-col-head">Monthly</div>
+
+                <div class="pg-cell pg-row-label">
+                  <span class="pg-plan">Anytime</span>
+                  <span class="pg-badge">Popular</span>
+                </div>
+                <div class="pg-cell pg-price">{{ pricing()!.anytime_daily_price }}</div>
+                <div class="pg-cell pg-price pg-weekly">{{ pricing()!.anytime_weekly_price }}</div>
+                <div class="pg-cell pg-price">{{ pricing()!.anytime_monthly_price }}</div>
+
+                <div class="pg-cell pg-row-label pg-last">
+                  <span class="pg-plan">3-hour slot</span>
+                </div>
+                <div class="pg-cell pg-price pg-last">{{ pricing()!.timeslot_daily_price }}</div>
+                <div class="pg-cell pg-price pg-weekly pg-last">{{ pricing()!.timeslot_weekly_price }}</div>
+                <div class="pg-cell pg-price pg-last">{{ pricing()!.timeslot_monthly_price }}</div>
+
+                <div class="pg-cell pg-row-label pg-addon">
+                  <span class="pg-plan pg-addon-name">+ Locker</span>
+                </div>
+                <div class="pg-cell pg-price pg-addon">+ {{ pricing()!.locker_daily_price }}</div>
+                <div class="pg-cell pg-price pg-weekly pg-addon">+ {{ pricing()!.locker_weekly_price }}</div>
+                <div class="pg-cell pg-price pg-addon">+ {{ pricing()!.locker_monthly_price }}</div>
+              </div>
+
+              <div class="pricing-features">
+                <span class="pf-tag">High-speed Wi-Fi</span>
+                <span class="pf-tag">Charging stations</span>
+                <span class="pf-tag">Drinking water</span>
+                <span class="pf-tag">Open seating</span>
+              </div>
+
+            </div>
+          }
 
       <section class="card-side">
         <div class="auth-card-wrap">
@@ -172,6 +211,7 @@ import { AuthService } from '../../core/api/auth.service';
         color: #fff;
         background: var(--zv-gradient-brand);
         overflow: hidden;
+        overflow-y: auto;
       }
       .hero::before {
         content: '';
@@ -189,11 +229,11 @@ import { AuthService } from '../../core/api/auth.service';
       }
       .hero-inner {
         position: relative;
-        height: 100%;
-        padding: 56px 64px;
+        min-height: 100%;
+        padding: 48px 48px;
         display: flex;
         flex-direction: column;
-        gap: 32px;
+        gap: 24px;
         justify-content: center;
       }
       .brand {
@@ -218,42 +258,119 @@ import { AuthService } from '../../core/api/auth.service';
       }
       .hero h1 {
         margin: 0;
-        font-size: 40px;
-        line-height: 1.1;
+        font-size: 32px;
+        line-height: 1.15;
         letter-spacing: -0.03em;
         font-weight: 700;
-        max-width: 520px;
+        max-width: 480px;
       }
-      .hero p {
-        margin: 0;
-        font-size: 16px;
-        opacity: 0.88;
-        max-width: 460px;
-        line-height: 1.5;
+
+      /* ── Pricing banner ── */
+      .pricing-banner {
+        background: rgba(255,255,255,0.10);
+        border: 0.5px solid rgba(255,255,255,0.22);
+        border-radius: 12px;
+        overflow: hidden;
+        backdrop-filter: blur(6px);
       }
-      .features {
-        list-style: none;
-        padding: 0;
-        margin: 12px 0 0;
-        display: grid;
-        gap: 10px;
-      }
-      .features li {
+      .pricing-header {
+        padding: 12px 16px;
+        border-bottom: 0.5px solid rgba(255,255,255,0.15);
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 14px;
-        opacity: 0.92;
+        justify-content: space-between;
       }
-      .features li mat-icon {
-        background: rgba(255, 255, 255, 0.16);
-        border-radius: 50%;
-        padding: 4px;
-        font-size: 18px;
-        width: 26px;
-        height: 26px;
+      .pricing-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.9);
+        letter-spacing: 0.01em;
+      }
+      .currency-pill {
+        font-size: 11px;
+        color: rgba(255,255,255,0.6);
+        background: rgba(255,255,255,0.1);
+        padding: 3px 9px;
+        border-radius: 6px;
+        border: 0.5px solid rgba(255,255,255,0.18);
+      }
+      .pricing-grid {
         display: grid;
-        place-items: center;
+        grid-template-columns: 140px repeat(3, minmax(0,1fr));
+      }
+      .pg-cell {
+        padding: 9px 12px;
+        border-bottom: 0.5px solid rgba(255,255,255,0.10);
+        font-size: 12px;
+        color: rgba(255,255,255,0.75);
+      }
+      .pg-label { border-right: 0.5px solid rgba(255,255,255,0.10); }
+      .pg-col-head {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .pg-weekly {
+        background: rgba(255,255,255,0.06);
+        border-left: 0.5px solid rgba(255,255,255,0.10);
+        border-right: 0.5px solid rgba(255,255,255,0.10);
+      }
+      .pg-row-label {
+        border-right: 0.5px solid rgba(255,255,255,0.10);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .pg-plan {
+        font-size: 12px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.9);
+      }
+      .pg-badge {
+        font-size: 10px;
+        background: rgba(255,255,255,0.18);
+        color: rgba(255,255,255,0.9);
+        padding: 1px 7px;
+        border-radius: 5px;
+      }
+      .pg-price {
+        text-align: center;
+        font-size: 15px;
+        font-weight: 500;
+        color: #fff;
+      }
+      .pg-last {
+        border-bottom: 0.5px solid rgba(255,255,255,0.18);
+      }
+      .pg-addon {
+        border-bottom: none;
+      }
+      .pg-addon .pg-price,
+      .pg-cell.pg-price.pg-addon {
+        color: rgba(255,255,255,0.6);
+        font-size: 13px;
+      }
+      .pg-addon-name {
+        color: rgba(255,255,255,0.6) !important;
+        font-size: 11px !important;
+      }
+      .pricing-features {
+        padding: 10px 14px;
+        border-top: 0.5px solid rgba(255,255,255,0.12);
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .pf-tag {
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 5px;
+        background: rgba(255,255,255,0.10);
+        color: rgba(255,255,255,0.65);
+        border: 0.5px solid rgba(255,255,255,0.15);
       }
       .card-side {
         display: grid;
@@ -365,11 +482,12 @@ import { AuthService } from '../../core/api/auth.service';
     `,
   ],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly bookings = inject(BookingsService);
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -379,6 +497,14 @@ export class LoginComponent {
   readonly submitting = signal(false);
   readonly showPassword = signal(false);
   readonly errorMsg = signal<string | null>(null);
+  readonly pricing = signal<PricingConfigResponse | null>(null);
+
+  ngOnInit(): void {
+    this.bookings.publicPricing().subscribe({
+      next: (p) => this.pricing.set(p),
+      error: () => { /* silently ignore — pricing banner just stays hidden */ },
+    });
+  }
 
   signInWithGoogle(): void {
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
