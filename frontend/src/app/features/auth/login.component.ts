@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import {
@@ -23,6 +23,7 @@ import { PricingConfigResponse } from '../../core/api/models';
   standalone: true,
   imports: [
     CommonModule,
+    DecimalPipe,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -54,30 +55,82 @@ import { PricingConfigResponse } from '../../core/api/models';
               <div class="pricing-grid">
                 <div class="pg-cell pg-label"></div>
                 <div class="pg-cell pg-col-head">Daily</div>
-                <div class="pg-cell pg-col-head pg-weekly">Weekly</div>
-                <div class="pg-cell pg-col-head">Monthly</div>
+                <div class="pg-cell pg-col-head pg-weekly">
+                  <span>Weekly</span>
+                  @if (weeklyAnytimeSaving() > 0) {
+                    <span class="pg-save">Save {{ weeklyAnytimeSaving() }}%</span>
+                  }
+                </div>
+                <div class="pg-cell pg-col-head">
+                  <span>Monthly</span>
+                  @if (monthlyAnytimeSaving() > 0) {
+                    <span class="pg-save">Save {{ monthlyAnytimeSaving() }}%</span>
+                  }
+                </div>
 
+                <!-- Anytime -->
                 <div class="pg-cell pg-row-label">
-                  <span class="pg-plan">Anytime</span>
-                  <span class="pg-badge">Popular</span>
+                  <div>
+                    <div class="pg-plan-name">Anytime <span class="pg-badge">Popular</span></div>
+                    <div class="pg-plan-sub">Unlimited hours</div>
+                  </div>
                 </div>
-                <div class="pg-cell pg-price">{{ pricing()!.anytime_daily_price }}</div>
-                <div class="pg-cell pg-price pg-weekly">{{ pricing()!.anytime_weekly_price }}</div>
-                <div class="pg-cell pg-price">{{ pricing()!.anytime_monthly_price }}</div>
-
-                <div class="pg-cell pg-row-label pg-last">
-                  <span class="pg-plan">3-hour slot</span>
+                <div class="pg-cell pg-price-cell">
+                  <div class="pg-price-main">{{ pricing()!.anytime_daily_price }}</div>
+                  <div class="pg-price-sub">per day</div>
                 </div>
-                <div class="pg-cell pg-price pg-last">{{ pricing()!.timeslot_daily_price }}</div>
-                <div class="pg-cell pg-price pg-weekly pg-last">{{ pricing()!.timeslot_weekly_price }}</div>
-                <div class="pg-cell pg-price pg-last">{{ pricing()!.timeslot_monthly_price }}</div>
+                <div class="pg-cell pg-price-cell pg-weekly">
+                  <div class="pg-price-main">{{ pricing()!.anytime_weekly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                  <div class="pg-price-period">{{ pricing()!.anytime_weekly_price * 7 | number }} / wk</div>
+                </div>
+                <div class="pg-cell pg-price-cell">
+                  <div class="pg-price-main">{{ pricing()!.anytime_monthly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                  <div class="pg-price-period">{{ pricing()!.anytime_monthly_price * 30 | number }} / mo</div>
+                </div>
 
+                <!-- 3-hour slot -->
+                <div class="pg-cell pg-row-label pg-divider">
+                  <div>
+                    <div class="pg-plan-name">3-hour slot</div>
+                    <div class="pg-plan-sub">One session / day</div>
+                  </div>
+                </div>
+                <div class="pg-cell pg-price-cell pg-divider">
+                  <div class="pg-price-main">{{ pricing()!.timeslot_daily_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                </div>
+                <div class="pg-cell pg-price-cell pg-weekly pg-divider">
+                  <div class="pg-price-main">{{ pricing()!.timeslot_weekly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                  <div class="pg-price-period">{{ pricing()!.timeslot_weekly_price * 7 | number }} / wk</div>
+                </div>
+                <div class="pg-cell pg-price-cell pg-divider">
+                  <div class="pg-price-main">{{ pricing()!.timeslot_monthly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                  <div class="pg-price-period">{{ pricing()!.timeslot_monthly_price * 30 | number }} / mo</div>
+                </div>
+
+                <!-- Locker add-on -->
                 <div class="pg-cell pg-row-label pg-addon">
-                  <span class="pg-plan pg-addon-name">+ Locker</span>
+                  <div>
+                    <div class="pg-addon-name">+ Locker</div>
+                    <div class="pg-plan-sub">Optional add-on</div>
+                  </div>
                 </div>
-                <div class="pg-cell pg-price pg-addon">+ {{ pricing()!.locker_daily_price }}</div>
-                <div class="pg-cell pg-price pg-weekly pg-addon">+ {{ pricing()!.locker_weekly_price }}</div>
-                <div class="pg-cell pg-price pg-addon">+ {{ pricing()!.locker_monthly_price }}</div>
+                <div class="pg-cell pg-price-cell pg-addon">
+                  <div class="pg-addon-price">+ {{ pricing()!.locker_daily_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                </div>
+                <div class="pg-cell pg-price-cell pg-weekly pg-addon">
+                  <div class="pg-addon-price">+ {{ pricing()!.locker_weekly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                </div>
+                <div class="pg-cell pg-price-cell pg-addon">
+                  <div class="pg-addon-price">+ {{ pricing()!.locker_monthly_price }}</div>
+                  <div class="pg-price-sub">per day</div>
+                </div>
               </div>
 
               <div class="pricing-features">
@@ -354,10 +407,10 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .pricing-grid {
         display: grid;
-        grid-template-columns: 140px repeat(3, minmax(0,1fr));
+        grid-template-columns: 130px repeat(3, minmax(0,1fr));
       }
       .pg-cell {
-        padding: 9px 12px;
+        padding: 8px 10px;
         border-bottom: 0.5px solid rgba(255,255,255,0.10);
         font-size: 12px;
         color: rgba(255,255,255,0.75);
@@ -369,7 +422,18 @@ import { PricingConfigResponse } from '../../core/api/models';
         font-weight: 600;
         color: rgba(255,255,255,0.6);
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .pg-save {
+        font-size: 10px;
+        color: #6ee7b7;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
       }
       .pg-weekly {
         background: rgba(255,255,255,0.06);
@@ -380,40 +444,66 @@ import { PricingConfigResponse } from '../../core/api/models';
         border-right: 0.5px solid rgba(255,255,255,0.10);
         display: flex;
         align-items: center;
-        gap: 7px;
       }
-      .pg-plan {
+      .pg-plan-name {
         font-size: 12px;
         font-weight: 500;
         color: rgba(255,255,255,0.9);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .pg-plan-sub {
+        font-size: 10px;
+        color: rgba(255,255,255,0.45);
+        margin-top: 2px;
       }
       .pg-badge {
-        font-size: 10px;
+        font-size: 9px;
         background: rgba(255,255,255,0.18);
         color: rgba(255,255,255,0.9);
-        padding: 1px 7px;
-        border-radius: 5px;
+        padding: 1px 6px;
+        border-radius: 4px;
       }
-      .pg-price {
+      .pg-price-cell {
         text-align: center;
-        font-size: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+      }
+      .pg-price-main {
+        font-size: 16px;
         font-weight: 500;
         color: #fff;
+        line-height: 1;
       }
-      .pg-last {
+      .pg-price-sub {
+        font-size: 10px;
+        color: rgba(255,255,255,0.45);
+      }
+      .pg-price-period {
+        font-size: 10px;
+        color: rgba(255,255,255,0.3);
+        margin-top: 1px;
+      }
+      .pg-divider {
         border-bottom: 0.5px solid rgba(255,255,255,0.18);
       }
       .pg-addon {
         border-bottom: none;
       }
-      .pg-addon .pg-price,
-      .pg-cell.pg-price.pg-addon {
-        color: rgba(255,255,255,0.6);
-        font-size: 13px;
-      }
       .pg-addon-name {
-        color: rgba(255,255,255,0.6) !important;
-        font-size: 11px !important;
+        font-size: 11px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.55);
+      }
+      .pg-addon-price {
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.55);
+        line-height: 1;
       }
       .pricing-features {
         padding: 10px 14px;
@@ -570,6 +660,18 @@ export class LoginComponent implements OnInit {
       next: (p) => this.pricing.set(p),
       error: () => { /* silently ignore — pricing banner just stays hidden */ },
     });
+  }
+
+  weeklyAnytimeSaving(): number {
+    const p = this.pricing();
+    if (!p || p.anytime_daily_price === 0) return 0;
+    return Math.round((1 - p.anytime_weekly_price / p.anytime_daily_price) * 100);
+  }
+
+  monthlyAnytimeSaving(): number {
+    const p = this.pricing();
+    if (!p || p.anytime_daily_price === 0) return 0;
+    return Math.round((1 - p.anytime_monthly_price / p.anytime_daily_price) * 100);
   }
 
   signInWithGoogle(): void {
