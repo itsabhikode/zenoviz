@@ -273,7 +273,6 @@ import { PricingConfigResponse } from '../../core/api/models';
         color: #fff;
         background: var(--zv-gradient-brand);
         overflow: hidden;
-        overflow-y: auto;
       }
       .hero::before {
         content: '';
@@ -286,7 +285,6 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .hero-inner {
         position: relative;
-        min-height: 100%;
         padding: 48px 48px;
         display: flex;
         flex-direction: column;
