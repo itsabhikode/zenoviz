@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
         await expiry_task
 
 
-app = FastAPI(title="Zenoviz", lifespan=lifespan)
+app = FastAPI(title="Zenoviz", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
 
 @app.exception_handler(NoCredentialsError)
