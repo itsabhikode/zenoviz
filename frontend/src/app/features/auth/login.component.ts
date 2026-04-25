@@ -214,12 +214,6 @@ import { PricingConfigResponse } from '../../core/api/models';
         .auth-shell {
           grid-template-columns: 1fr;
         }
-        /* default mobile: show hero, hide login */
-        .hero { display: block; }
-        .card-side { display: none; }
-        /* after "Book now": hide hero, show login */
-        .auth-shell.mobile-login .hero { display: none; }
-        .auth-shell.mobile-login .card-side { display: grid; min-height: 100dvh; }
       }
       .hero {
         position: relative;
@@ -446,6 +440,13 @@ import { PricingConfigResponse } from '../../core/api/models';
         .card-side {
           padding: 32px 24px;
         }
+      }
+      @media (max-width: 900px) {
+        /* default: show hero, hide login card */
+        .card-side { display: none; }
+        /* after "Book now": hide hero, show login card */
+        .auth-shell.mobile-login .hero { display: none; }
+        .auth-shell.mobile-login .card-side { display: grid; min-height: 100dvh; }
       }
       .auth-card-wrap {
         width: 100%;
