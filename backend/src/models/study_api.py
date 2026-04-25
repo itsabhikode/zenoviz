@@ -181,15 +181,15 @@ class PaymentSettingsResponse(BaseModel):
 class PricingConfigResponse(BaseModel):
     id: UUID
     is_active: bool
-    timeslot_daily_price: str
-    timeslot_weekly_price: str
-    timeslot_monthly_price: str
-    anytime_daily_price: str
-    anytime_weekly_price: str
-    anytime_monthly_price: str
-    locker_daily_price: str
-    locker_weekly_price: str
-    locker_monthly_price: str
+    timeslot_daily_price: int
+    timeslot_weekly_price: int
+    timeslot_monthly_price: int
+    anytime_daily_price: int
+    anytime_weekly_price: int
+    anytime_monthly_price: int
+    locker_daily_price: int
+    locker_weekly_price: int
+    locker_monthly_price: int
     reservation_timeout_minutes: int
     business_open_time: time
     business_close_time: time
