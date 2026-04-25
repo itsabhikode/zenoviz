@@ -393,17 +393,17 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .pricing-title {
         font-size: 13px;
-        font-weight: 600;
-        color: rgba(255,255,255,0.9);
+        font-weight: 700;
+        color: #fff;
         letter-spacing: 0.01em;
       }
       .currency-pill {
         font-size: 11px;
-        color: rgba(255,255,255,0.6);
-        background: rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.8);
+        background: rgba(255,255,255,0.15);
         padding: 3px 9px;
         border-radius: 6px;
-        border: 0.5px solid rgba(255,255,255,0.18);
+        border: 0.5px solid rgba(255,255,255,0.25);
       }
       .pricing-grid {
         display: grid;
@@ -411,16 +411,16 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .pg-cell {
         padding: 8px 10px;
-        border-bottom: 0.5px solid rgba(255,255,255,0.10);
+        border-bottom: 0.5px solid rgba(255,255,255,0.15);
         font-size: 12px;
-        color: rgba(255,255,255,0.75);
+        color: rgba(255,255,255,0.9);
       }
-      .pg-label { border-right: 0.5px solid rgba(255,255,255,0.10); }
+      .pg-label { border-right: 0.5px solid rgba(255,255,255,0.15); }
       .pg-col-head {
         text-align: center;
         font-size: 11px;
-        font-weight: 600;
-        color: rgba(255,255,255,0.6);
+        font-weight: 700;
+        color: rgba(255,255,255,0.85);
         text-transform: uppercase;
         letter-spacing: 0.05em;
         display: flex;
@@ -430,25 +430,25 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .pg-save {
         font-size: 10px;
-        color: #6ee7b7;
-        font-weight: 500;
+        color: #86efac;
+        font-weight: 600;
         text-transform: none;
         letter-spacing: 0;
       }
       .pg-weekly {
-        background: rgba(255,255,255,0.06);
-        border-left: 0.5px solid rgba(255,255,255,0.10);
-        border-right: 0.5px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.08);
+        border-left: 0.5px solid rgba(255,255,255,0.15);
+        border-right: 0.5px solid rgba(255,255,255,0.15);
       }
       .pg-row-label {
-        border-right: 0.5px solid rgba(255,255,255,0.10);
+        border-right: 0.5px solid rgba(255,255,255,0.15);
         display: flex;
         align-items: center;
       }
       .pg-plan-name {
         font-size: 12px;
-        font-weight: 500;
-        color: rgba(255,255,255,0.9);
+        font-weight: 600;
+        color: #fff;
         display: flex;
         align-items: center;
         gap: 5px;
@@ -456,13 +456,13 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .pg-plan-sub {
         font-size: 10px;
-        color: rgba(255,255,255,0.45);
+        color: rgba(255,255,255,0.65);
         margin-top: 2px;
       }
       .pg-badge {
         font-size: 9px;
-        background: rgba(255,255,255,0.18);
-        color: rgba(255,255,255,0.9);
+        background: rgba(255,255,255,0.22);
+        color: #fff;
         padding: 1px 6px;
         border-radius: 4px;
       }
@@ -474,35 +474,35 @@ import { PricingConfigResponse } from '../../core/api/models';
         gap: 1px;
       }
       .pg-price-main {
-        font-size: 16px;
-        font-weight: 500;
+        font-size: 17px;
+        font-weight: 600;
         color: #fff;
         line-height: 1;
       }
       .pg-price-sub {
         font-size: 10px;
-        color: rgba(255,255,255,0.45);
+        color: rgba(255,255,255,0.65);
       }
       .pg-price-period {
         font-size: 10px;
-        color: rgba(255,255,255,0.3);
+        color: rgba(255,255,255,0.5);
         margin-top: 1px;
       }
       .pg-divider {
-        border-bottom: 0.5px solid rgba(255,255,255,0.18);
+        border-bottom: 0.5px solid rgba(255,255,255,0.25);
       }
       .pg-addon {
         border-bottom: none;
       }
       .pg-addon-name {
         font-size: 11px;
-        font-weight: 500;
-        color: rgba(255,255,255,0.55);
+        font-weight: 600;
+        color: rgba(255,255,255,0.75);
       }
       .pg-addon-price {
         font-size: 14px;
-        font-weight: 500;
-        color: rgba(255,255,255,0.55);
+        font-weight: 600;
+        color: rgba(255,255,255,0.75);
         line-height: 1;
       }
       .pricing-features {
@@ -516,9 +516,9 @@ import { PricingConfigResponse } from '../../core/api/models';
         font-size: 10px;
         padding: 2px 8px;
         border-radius: 5px;
-        background: rgba(255,255,255,0.10);
-        color: rgba(255,255,255,0.65);
-        border: 0.5px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.15);
+        color: rgba(255,255,255,0.85);
+        border: 0.5px solid rgba(255,255,255,0.25);
       }
       .card-side {
         display: grid;
