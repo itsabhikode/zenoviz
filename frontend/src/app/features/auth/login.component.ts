@@ -285,6 +285,7 @@ import { PricingConfigResponse } from '../../core/api/models';
       }
       .hero-inner {
         position: relative;
+        height: 100%;
         padding: 48px 48px;
         display: flex;
         flex-direction: column;
