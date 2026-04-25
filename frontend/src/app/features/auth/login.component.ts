@@ -90,6 +90,9 @@ import { PricingConfigResponse } from '../../core/api/models';
             </div>
           }
 
+        </div>
+      </aside>
+
       <section class="card-side">
         <div class="auth-card-wrap">
           <div class="auth-card">
