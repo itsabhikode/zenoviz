@@ -49,7 +49,7 @@ export default function CreateBookingPage() {
     const openH = parseInt(pricing.business_open_time.split(':')[0], 10)
     const closeH = parseInt(pricing.business_close_time.split(':')[0], 10)
     const slots: string[] = []
-    for (let h = openH; h + 3 <= closeH; h += 3) {
+    for (let h = openH; h + 3 <= closeH; h += 1) {
       slots.push(`${String(h).padStart(2, '0')}:00`)
     }
     return slots.length > 0 ? slots : fallback
