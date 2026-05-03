@@ -1,0 +1,210 @@
+export interface LoginTokens {
+  access_token: string
+  refresh_token: string
+}
+
+export interface RefreshTokenResponse {
+  access_token: string
+}
+
+export interface RegisterRequest {
+  email: string
+  password: string
+  given_name: string
+  family_name: string
+  phone_number: string
+  gender: 'male' | 'female' | 'other'
+}
+
+export interface RegisterResponse {
+  message: string
+  user_sub: string
+  user_confirmed: boolean
+  verification_destination: string | null
+  delivery_medium: string | null
+}
+
+export interface ForgotPasswordResponse {
+  message: string
+  verification_destination: string | null
+  delivery_medium: string | null
+}
+
+export interface ApiMessageResponse {
+  message: string
+}
+
+export interface MeResponse {
+  user_id: string
+  email: string
+  roles: string[]
+  given_name?: string | null
+  family_name?: string | null
+  phone_number?: string | null
+}
+
+export type AccessType = 'timeslot' | 'anytime'
+export type BookingStatus = 'RESERVED' | 'PAYMENT_PENDING' | 'COMPLETED' | 'REJECTED' | 'EXPIRED'
+export type PriceCategory = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'daily' | 'weekly' | 'monthly'
+
+export interface AvailabilityRequest {
+  seat_id: number
+  start_date: string
+  end_date: string
+  access_type: AccessType
+  start_time?: string | null
+  end_time?: string | null
+  with_locker?: boolean
+}
+
+export interface PriceBreakdown {
+  category: string
+  access_type: string
+  duration_days: string
+  per_day_rate: string
+  base: string
+  locker_per_day: string
+  locker_fee: string
+  total: string
+}
+
+export interface AvailabilityResponse {
+  available: boolean
+  reason: string | null
+  duration_days: number
+  category: string
+  final_price: string
+  breakdown: PriceBreakdown
+}
+
+export interface CreateBookingRequest extends AvailabilityRequest {}
+
+export interface SeatsAvailabilityRequest {
+  start_date: string
+  end_date: string
+  access_type: AccessType
+  start_time?: string | null
+  end_time?: string | null
+}
+
+export interface SeatsAvailabilityResponse {
+  total_seats: number
+  unavailable_seat_ids: number[]
+  disabled_seat_ids?: number[]
+}
+
+export interface UserSummary {
+  user_id: string
+  email: string | null
+  given_name: string | null
+  family_name: string | null
+  phone_number: string | null
+}
+
+export interface BookingResponse {
+  id: string
+  user_id: string
+  seat_id: number
+  start_date: string
+  end_date: string
+  access_type: AccessType
+  start_time: string
+  end_time: string
+  category: string
+  duration_days: number
+  status: BookingStatus
+  reserved_until: string | null
+  final_price: string
+  paid_amount: string
+  amount_due: string
+  with_locker: boolean
+  breakdown: PriceBreakdown
+  payment_proof_path: string | null
+  created_at: string
+  updated_at: string | null
+  user?: UserSummary | null
+}
+
+export interface PricingConfigResponse {
+  timeslot_daily_price: number
+  timeslot_weekly_price: number
+  timeslot_monthly_price: number
+  anytime_daily_price: number
+  anytime_weekly_price: number
+  anytime_monthly_price: number
+  locker_daily_price: number
+  locker_weekly_price: number
+  locker_monthly_price: number
+  reservation_timeout_minutes: number
+  business_open_time: string
+  business_close_time: string
+}
+
+export interface UpdatePricingRequest extends PricingConfigResponse {}
+
+export interface SeatResponse {
+  id: number
+  label: string
+  is_enabled: boolean
+}
+
+export interface UpdateSeatEnabledRequest {
+  is_enabled: boolean
+}
+
+export interface PaymentSettingsResponse {
+  upi_vpa: string | null
+  payee_name: string | null
+  instructions: string | null
+  has_qr: boolean
+  qr_content_type: string | null
+  qr_public_url?: string | null
+  updated_at: string | null
+}
+
+export interface UpdatePaymentSettingsRequest {
+  upi_vpa: string | null
+  payee_name: string | null
+  instructions: string | null
+}
+
+export interface UserAdminSummary {
+  user_id: string
+  username: string
+  email: string | null
+  email_verified: boolean
+  given_name: string | null
+  family_name: string | null
+  phone_number: string | null
+  status: string
+  enabled: boolean
+  created_at: string | null
+  roles: string[]
+}
+
+export interface ListUsersResponse {
+  users: UserAdminSummary[]
+  next_pagination_token: string | null
+}
+
+export interface RoleMutationRequest {
+  user_id?: string
+  email?: string
+  role: string
+}
+
+export interface RoleAssignmentResponse {
+  user_id: string
+  role: string
+  changed: boolean
+}
+
+export interface UserRolesResponse {
+  user_id: string
+  roles: string[]
+}
+
+export interface RoleUsersResponse {
+  role: string
+  user_ids: string[]
+}
