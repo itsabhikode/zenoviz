@@ -48,26 +48,25 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     className={cn(
-                      'h-11 text-xs font-semibold uppercase tracking-wider text-muted-foreground',
                       header.column.getCanSort() && 'cursor-pointer select-none',
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       {header.isPlaceholder
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
                       {header.column.getCanSort() && (
-                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/40" />
                       )}
                     </div>
                   </TableHead>
@@ -84,7 +83,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="border-border/40 transition-colors">
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -128,9 +127,4 @@ export function DataTable<TData, TValue>({
       )}
     </div>
   )
-}
-
-/** Helper for sortable column headers */
-export function SortableHeader({ label }: { label: string }) {
-  return <span>{label}</span>
 }
