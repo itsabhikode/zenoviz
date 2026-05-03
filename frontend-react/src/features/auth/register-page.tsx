@@ -109,7 +109,7 @@ export default function RegisterPage() {
                     <span className="bg-card px-2 text-muted-foreground">or</span>
                   </div>
                 </div>
-                <Button type="button" variant="outline" className="w-full" onClick={() => authApi.startGoogleOAuth(null)}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => authApi.startGoogleOAuth('/app/my-bookings')}>
                   Continue with Google
                 </Button>
               </>
