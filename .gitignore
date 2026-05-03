@@ -24,6 +24,7 @@ frontend/.angular/
 frontend/coverage/
 frontend/.nx/cache/
 frontend/.env
+frontend-react/.env
 
 # OS / editors
 .DS_Store
