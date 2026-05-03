@@ -1,48 +1,56 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand */
-  --color-brand: #7c3aed;
+  /* Font */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Brand — deep navy */
+  --color-brand: #122C6B;
   --color-brand-foreground: #ffffff;
 
   /* Surfaces */
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
+  --color-background: #F8FAFC;
+  --color-foreground: #0F172A;
   --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
+  --color-card-foreground: #0F172A;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0f172a;
+  --color-popover-foreground: #0F172A;
 
-  /* Primary — violet with depth */
-  --color-primary: #7c3aed;
+  /* Primary — electric violet */
+  --color-primary: #10B981;
   --color-primary-foreground: #ffffff;
 
   /* Secondary */
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #0f172a;
+  --color-secondary: #EFF3F8;
+  --color-secondary-foreground: #0F172A;
 
   /* Muted */
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
+  --color-muted: #EFF3F8;
+  --color-muted-foreground: #64748B;
 
-  /* Accent — subtle violet tint */
-  --color-accent: #ede9fe;
-  --color-accent-foreground: #4c1d95;
+  /* Accent — light violet tint */
+  --color-accent: #ECFDF5;
+  --color-accent-foreground: #065F46;
 
   /* Destructive */
-  --color-destructive: #dc2626;
+  --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
 
   /* Borders & inputs */
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #7c3aed;
+  --color-border: #E2E8F0;
+  --color-input: #E2E8F0;
+  --color-ring: #10B981;
 
-  /* Radius — rounder for modern feel */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* Sidebar — deep navy */
+  --color-sidebar: #122C6B;
+  --color-sidebar-foreground: #94A3B8;
+  --color-sidebar-active: #ffffff;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 }
 
 @layer base {
@@ -51,31 +59,101 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
-  /* Smooth transitions on interactive elements */
   button, a, input, select, textarea {
     @apply transition-colors duration-150;
   }
 }
 
 @layer components {
-  /* Card elevation */
+  /* Card */
   .card-elevated {
-    @apply bg-card rounded-xl border border-border/60 shadow-sm;
+    @apply bg-card rounded-lg border border-border/50 shadow-sm;
   }
 
-  /* Glass navbar */
-  .nav-glass {
-    @apply bg-white/80 backdrop-blur-lg border-b border-border/50 shadow-sm;
+  /* Top navbar — deep navy */
+  .nav-hubspot {
+    @apply bg-[#122C6B] text-white shadow-md;
   }
 
-  /* Gradient primary button override */
-  .btn-gradient {
-    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
-    @apply text-white shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/30;
+  /* Primary button — electric violet */
+  .btn-primary {
+    @apply bg-[#10B981] text-white font-semibold rounded-md shadow-sm;
+    @apply hover:bg-[#059669] hover:shadow-md;
+    @apply active:bg-[#047857];
+  }
+
+  /* Ghost on dark background */
+  .btn-nav {
+    @apply text-[#94A3B8] hover:text-white hover:bg-white/10 rounded-md px-3 py-2 text-sm font-medium;
   }
 
   /* Subtle page section backgrounds */
   .section-muted {
     @apply bg-gradient-to-b from-muted/50 to-transparent;
+  }
+
+  /* Gradient button alias */
+  .btn-gradient {
+    @apply bg-[#10B981] text-white font-semibold shadow-sm;
+    @apply hover:bg-[#059669] hover:shadow-md;
+  }
+
+  /* Seat grid buttons */
+  .seat-btn {
+    all: unset;
+    box-sizing: border-box;
+    border-radius: 6px 6px 3px 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 10px/1 'Inter', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+    background: #e2e8f0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    cursor: pointer;
+    transition: background 0.12s ease, transform 0.08s ease,
+      box-shadow 0.15s ease, color 0.12s ease;
+  }
+  .seat-btn:hover:not(:disabled):not(.seat-selected) {
+    background: #D1FAE5;
+    color: #047857;
+  }
+  .seat-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .seat-selected {
+    background: linear-gradient(135deg, #10B981, #059669) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 12px -4px rgba(16, 185, 129, 0.5);
+  }
+  .seat-booked {
+    background: repeating-linear-gradient(
+      45deg, #f1f5f9, #f1f5f9 4px, #e2e8f0 4px, #e2e8f0 8px
+    ) !important;
+    color: #cbd5e1 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+  .seat-admin-disabled {
+    background: repeating-linear-gradient(
+      -35deg, #fef2f2, #fef2f2 4px, #fecaca 4px, #fecaca 8px
+    ) !important;
+    color: #991b1b !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+
+  /* Seat grid responsive scaling */
+  @media (max-width: 480px) {
+    .seat-grid-scale { transform: scale(0.85); margin-bottom: -75px; }
+  }
+  @media (max-width: 380px) {
+    .seat-grid-scale { transform: scale(0.75); margin-bottom: -125px; }
+  }
+  @media (max-width: 320px) {
+    .seat-grid-scale { transform: scale(0.65); margin-bottom: -175px; }
   }
 }

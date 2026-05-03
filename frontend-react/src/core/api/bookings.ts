@@ -6,6 +6,7 @@ import type {
   SeatsAvailabilityResponse,
   CreateBookingRequest,
   BookingResponse,
+  GalleryImageResponse,
   PaymentSettingsResponse,
   PricingConfigResponse,
 } from './models'
@@ -73,5 +74,10 @@ export async function paymentQrBlob(): Promise<Blob> {
 
 export async function publicPricing(): Promise<PricingConfigResponse> {
   const { data } = await apiClient.get<PricingConfigResponse>('/study-room/pricing')
+  return data
+}
+
+export async function publicGallery(): Promise<GalleryImageResponse[]> {
+  const { data } = await apiClient.get<GalleryImageResponse[]>('/study-room/gallery')
   return data
 }

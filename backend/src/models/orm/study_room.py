@@ -99,6 +99,19 @@ class PaymentSettings(Base):
     updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
+class GalleryImage(Base):
+    __tablename__ = "gallery_images"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(256), default="")
+    alt_text: Mapped[str] = mapped_column(String(256), default="")
+    storage_key: Mapped[str] = mapped_column(String(512))
+    content_type: Mapped[str] = mapped_column(String(64), default="image/jpeg")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    public_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class SeatBookingDay(Base):
     __tablename__ = "seat_booking_days"
     __table_args__ = (

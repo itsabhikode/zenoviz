@@ -81,6 +81,24 @@ class S3StorageRepository(AbstractStorageRepository):
     def read_payment_proof(self, stored: str) -> bytes | None:
         return self._get_bytes(stored)
 
+    def save_gallery_image(self, filename: str, data: bytes) -> str:
+        key = self._key("gallery", filename)
+        content_type, _ = mimetypes.guess_type(filename)
+        extra: dict[str, Any] = {"Bucket": self._bucket, "Key": key, "Body": data}
+        if content_type:
+            extra["ContentType"] = content_type
+        self._client.put_object(**extra)
+        return key
+
+    def read_gallery_image(self, storage_key: str) -> bytes | None:
+        return self._get_bytes(storage_key)
+
+    def delete_gallery_image(self, storage_key: str) -> None:
+        try:
+            self._client.delete_object(Bucket=self._bucket, Key=storage_key)
+        except ClientError:
+            pass
+
     def _get_bytes(self, key: str) -> bytes | None:
         try:
             resp = self._client.get_object(Bucket=self._bucket, Key=key)

@@ -1,13 +1,15 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, Link } from 'react-router'
 import * as bookingsApi from '@/core/api/bookings'
 import { nprText } from '@/core/currency'
-import type { BookingResponse, BookingStatus } from '@/core/api/models'
+import type { BookingResponse, BookingStatus, PaymentSettingsResponse } from '@/core/api/models'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StaggerList, StaggerItem } from '@/components/stagger-list'
+import { QrCode, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 
 const STATUS_ORDER: BookingStatus[] = ['RESERVED', 'PAYMENT_PENDING', 'COMPLETED', 'EXPIRED', 'REJECTED']
@@ -30,6 +32,32 @@ function canEdit(b: BookingResponse): boolean {
   return b.status === 'RESERVED' || b.status === 'PAYMENT_PENDING' || b.status === 'COMPLETED'
 }
 
+function usePaymentQr(settings: PaymentSettingsResponse | undefined) {
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!settings?.has_qr) { setQrUrl(null); return }
+    const pub = settings.qr_public_url?.trim()
+    if (pub) {
+      const sep = pub.includes('?') ? '&' : '?'
+      const bust = settings.updated_at ? `${sep}v=${encodeURIComponent(settings.updated_at)}` : ''
+      setQrUrl(pub + bust)
+      return
+    }
+    let revoked = false
+    bookingsApi.paymentQrBlob().then((blob) => {
+      if (!revoked) setQrUrl(URL.createObjectURL(blob))
+    }).catch(() => setQrUrl(null))
+    return () => { revoked = true }
+  }, [settings])
+
+  useEffect(() => {
+    return () => { if (qrUrl?.startsWith('blob:')) URL.revokeObjectURL(qrUrl) }
+  }, [qrUrl])
+
+  return qrUrl
+}
+
 export default function MyBookingsPage() {
   const [searchParams] = useSearchParams()
   const notice = searchParams.get('notice')
@@ -39,6 +67,21 @@ export default function MyBookingsPage() {
     queryKey: ['bookings', 'mine'],
     queryFn: bookingsApi.myBookings,
   })
+
+  const needsPayment = (bookings ?? []).some(
+    (b) => b.status === 'RESERVED' || b.status === 'PAYMENT_PENDING',
+  )
+
+  const { data: settings } = useQuery({
+    queryKey: ['payment-settings'],
+    queryFn: bookingsApi.paymentSettings,
+    enabled: needsPayment,
+  })
+
+  const qrUrl = usePaymentQr(needsPayment ? settings : undefined)
+
+  const showPaymentCard = needsPayment && settings &&
+    (settings.has_qr || !!settings.upi_vpa || !!settings.payee_name || !!settings.instructions)
 
   const uploadMutation = useMutation({
     mutationFn: ({ bookingId, file }: { bookingId: string; file: File }) =>
@@ -84,6 +127,66 @@ export default function MyBookingsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Manage your study room reservations</p>
       </div>
 
+      {showPaymentCard && (
+        <Card className="mb-6 border-primary/20 bg-primary/5">
+          <CardHeader className="flex flex-row items-center gap-3 pb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <QrCode className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Pay for your reservation</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Scan the payment QR, pay as instructed, then upload the screenshot on your booking card below.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+              {qrUrl ? (
+                <img
+                  src={qrUrl}
+                  alt="Payment QR"
+                  className="w-[min(220px,70vw)] rounded-xl bg-white object-contain p-2.5 shadow-sm"
+                />
+              ) : settings?.has_qr ? (
+                <div className="flex w-[min(220px,70vw)] flex-col items-center gap-2 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  <QrCode className="h-12 w-12" />
+                  <span>Loading QR...</span>
+                </div>
+              ) : (
+                <div className="flex w-[min(220px,70vw)] flex-col items-center gap-2 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  <QrCode className="h-12 w-12" />
+                  <span>No QR uploaded yet</span>
+                </div>
+              )}
+              <div className="space-y-2 text-sm">
+                {settings?.payee_name && (
+                  <div><span className="text-muted-foreground">Payee:</span> <strong>{settings.payee_name}</strong></div>
+                )}
+                {settings?.upi_vpa && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">UPI/ID:</span> <strong>{settings.upi_vpa}</strong>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        navigator.clipboard.writeText(settings.upi_vpa!)
+                        toast.success('Copied to clipboard')
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+                {settings?.instructions && (
+                  <div className="whitespace-pre-wrap text-muted-foreground">{settings.instructions}</div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {notice === 'one-booking' && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           You already have an active booking. Edit it or wait until it expires.
@@ -100,9 +203,10 @@ export default function MyBookingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <StaggerList className="space-y-4">
           {sorted.map((b) => (
-            <Card key={b.id} className="overflow-hidden border-border/60 shadow-sm transition-shadow hover:shadow-md">
+            <StaggerItem key={b.id}>
+            <Card className="overflow-hidden border-border/60 shadow-sm transition-shadow hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between bg-muted/30 pb-2">
                 <CardTitle className="text-base font-semibold">
                   Seat {b.seat_id} &middot; {b.start_date} &rarr; {b.end_date}
@@ -130,8 +234,9 @@ export default function MyBookingsPage() {
                 </div>
               </CardContent>
             </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerList>
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />

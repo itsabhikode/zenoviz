@@ -7,7 +7,9 @@ import { AuthProvider } from '@/core/auth/auth-context'
 import { ProtectedRoute } from '@/components/protected-route'
 import { AdminRoute } from '@/components/admin-route'
 import { BookRoute } from '@/components/book-route'
+import { CommandPalette } from '@/components/command-palette'
 
+const LandingPage = lazy(() => import('@/features/landing/landing-page'))
 const LoginPage = lazy(() => import('@/features/auth/login-page'))
 const RegisterPage = lazy(() => import('@/features/auth/register-page'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/forgot-password-page'))
@@ -22,6 +24,8 @@ const AdminSeatsPage = lazy(() => import('@/features/admin/admin-seats-page'))
 const AdminBookingsPage = lazy(() => import('@/features/admin/admin-bookings-page'))
 const AdminPaymentsPage = lazy(() => import('@/features/admin/admin-payments-page'))
 const AdminPaymentSettingsPage = lazy(() => import('@/features/admin/admin-payment-settings-page'))
+const AdminGalleryPage = lazy(() => import('@/features/admin/admin-gallery-page'))
+const AdminDashboardPage = lazy(() => import('@/features/admin/admin-dashboard-page'))
 const UserShell = lazy(() => import('@/core/layout/user-shell'))
 const AdminShell = lazy(() => import('@/core/layout/admin-shell'))
 
@@ -71,6 +75,8 @@ export default function App() {
                   </AdminRoute>
                 }
               >
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="roles" element={<AdminRolesPage />} />
                 <Route path="pricing" element={<AdminPricingPage />} />
@@ -78,12 +84,14 @@ export default function App() {
                 <Route path="bookings" element={<AdminBookingsPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="payment-settings" element={<AdminPaymentSettingsPage />} />
+                <Route path="gallery" element={<AdminGalleryPage />} />
               </Route>
 
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          <CommandPalette />
           <Toaster position="top-right" />
         </BrowserRouter>
       </AuthProvider>

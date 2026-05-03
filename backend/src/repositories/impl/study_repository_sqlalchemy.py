@@ -4,13 +4,14 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.orm.study_room import (
     Booking,
     BookingStatus,
+    GalleryImage,
     PaymentSettings,
     PricingConfig,
     Seat,
@@ -266,6 +267,104 @@ class SqlAlchemyStudyRepository(AbstractStudyRepository):
                 updated_at=now,
             )
         )
+
+    # -- Dashboard stats --
+
+    async def dashboard_stats(self) -> dict[str, Any]:
+        from decimal import Decimal
+        from typing import Any
+
+        # Booking counts by status
+        status_rows = await self._session.execute(
+            select(Booking.status, func.count()).group_by(Booking.status)
+        )
+        status_counts: dict[str, int] = {}
+        for status_val, cnt in status_rows.all():
+            status_counts[status_val] = cnt
+
+        total_bookings = sum(status_counts.values())
+
+        # Revenue (paid_amount for completed bookings)
+        total_revenue = await self._session.scalar(
+            select(func.coalesce(func.sum(Booking.paid_amount), 0))
+            .where(Booking.status == BookingStatus.COMPLETED.value)
+        ) or Decimal("0")
+
+        # Pending revenue (final_price - paid_amount for non-expired/rejected)
+        pending_revenue = await self._session.scalar(
+            select(func.coalesce(func.sum(Booking.final_price - Booking.paid_amount), 0))
+            .where(Booking.status.in_([
+                BookingStatus.RESERVED.value,
+                BookingStatus.PAYMENT_PENDING.value,
+            ]))
+        ) or Decimal("0")
+
+        # Active seats (enabled)
+        total_seats = await self._session.scalar(select(func.count()).select_from(Seat)) or 0
+        enabled_seats = await self._session.scalar(
+            select(func.count()).select_from(Seat).where(Seat.is_enabled.is_(True))
+        ) or 0
+
+        # Unique users
+        unique_users = await self._session.scalar(
+            select(func.count(func.distinct(Booking.user_id)))
+        ) or 0
+
+        # Recent bookings (last 10)
+        recent = list(await self._session.scalars(
+            select(Booking).order_by(Booking.created_at.desc()).limit(10)
+        ))
+
+        # Gallery count
+        gallery_count = await self._session.scalar(
+            select(func.count()).select_from(GalleryImage)
+        ) or 0
+
+        return {
+            "total_bookings": total_bookings,
+            "status_counts": status_counts,
+            "total_revenue": float(total_revenue),
+            "pending_revenue": float(pending_revenue),
+            "total_seats": total_seats,
+            "enabled_seats": enabled_seats,
+            "unique_users": unique_users,
+            "gallery_count": gallery_count,
+            "recent_bookings": recent,
+        }
+
+    # -- Gallery --
+
+    async def list_gallery_images(self) -> list[GalleryImage]:
+        result = await self._session.scalars(
+            select(GalleryImage).order_by(GalleryImage.sort_order, GalleryImage.created_at)
+        )
+        return list(result.all())
+
+    async def get_gallery_image(self, image_id: UUID) -> GalleryImage | None:
+        return await self._session.get(GalleryImage, image_id)
+
+    async def insert_gallery_image(self, row: GalleryImage) -> GalleryImage:
+        self._session.add(row)
+        await self._session.flush()
+        return row
+
+    async def update_gallery_image(self, image_id: UUID, title: str, alt_text: str, sort_order: int) -> GalleryImage | None:
+        img = await self._session.get(GalleryImage, image_id)
+        if img is None:
+            return None
+        img.title = title
+        img.alt_text = alt_text
+        img.sort_order = sort_order
+        await self._session.flush()
+        return img
+
+    async def delete_gallery_image(self, image_id: UUID) -> GalleryImage | None:
+        img = await self._session.get(GalleryImage, image_id)
+        if img is None:
+            return None
+        await self._session.delete(img)
+        await self._session.flush()
+        return img
 
     async def _revert_to_paid_plan(self, b: Booking, now: datetime) -> None:
         """Restore last fully paid plan from ``reversion_snapshot`` (upgrade top-up timeout)."""

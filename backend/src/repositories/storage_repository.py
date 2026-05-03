@@ -18,3 +18,15 @@ class AbstractStorageRepository(ABC):
     @abstractmethod
     def read_payment_proof(self, stored: str) -> bytes | None:
         """Read payment proof bytes using the value returned from save_payment_proof."""
+
+    @abstractmethod
+    def save_gallery_image(self, filename: str, data: bytes) -> str:
+        """Save a gallery image; returns the storage key."""
+
+    @abstractmethod
+    def read_gallery_image(self, storage_key: str) -> bytes | None:
+        """Read gallery image bytes by storage key."""
+
+    @abstractmethod
+    def delete_gallery_image(self, storage_key: str) -> None:
+        """Delete a gallery image by storage key."""

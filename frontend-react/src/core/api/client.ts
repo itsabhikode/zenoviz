@@ -15,9 +15,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      tokenStorage.clear()
-      const returnTo = window.location.pathname
-      window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`
+      // Don't redirect during OAuth callback — it handles errors itself
+      if (!window.location.pathname.startsWith('/auth/callback')) {
+        tokenStorage.clear()
+        const returnTo = window.location.pathname
+        window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`
+      }
     }
     return Promise.reject(error)
   },

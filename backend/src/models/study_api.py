@@ -178,6 +178,33 @@ class PaymentSettingsResponse(BaseModel):
     updated_at: datetime | None
 
 
+class DashboardStatsResponse(BaseModel):
+    total_bookings: int
+    status_counts: dict[str, int]
+    total_revenue: float
+    pending_revenue: float
+    total_seats: int
+    enabled_seats: int
+    unique_users: int
+    gallery_count: int
+    recent_bookings: list[Any]
+
+
+class GalleryImageResponse(BaseModel):
+    id: UUID
+    title: str
+    alt_text: str
+    image_url: str
+    sort_order: int
+    created_at: datetime
+
+
+class UpdateGalleryImageRequest(BaseModel):
+    title: str = ""
+    alt_text: str = ""
+    sort_order: int = 0
+
+
 class PricingConfigResponse(BaseModel):
     id: UUID
     is_active: bool

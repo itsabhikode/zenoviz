@@ -7,18 +7,20 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 
 from src.config.app_settings import AppSettings
-from src.dependencies import get_app_settings, get_booking_service, get_current_user
+from src.dependencies import get_app_settings, get_booking_service, get_current_user, get_study_repo
 from src.domain.user import CurrentUser
 from src.models.study_api import (
     AvailabilityCheckRequest,
     AvailabilityCheckResponse,
     BookingResponse,
     CreateBookingRequest,
+    GalleryImageResponse,
     PaymentSettingsResponse,
     PricingConfigResponse,
     SeatsAvailabilityRequest,
     SeatsAvailabilityResponse,
 )
+from src.repositories.impl.study_repository_sqlalchemy import SqlAlchemyStudyRepository
 from src.services.booking_service import (
     BookingService,
     booking_to_response,
@@ -39,6 +41,59 @@ async def get_public_pricing(
 ) -> PricingConfigResponse:
     row = await svc.get_active_pricing_public()
     return pricing_to_response(row)
+
+
+@router.get("/gallery", response_model=list[GalleryImageResponse])
+async def get_public_gallery(
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
+) -> list[GalleryImageResponse]:
+    from typing import Any
+    rows = await repo.list_gallery_images()
+    result: list[GalleryImageResponse] = []
+    for img in rows:
+        if settings.payment_qr_public_base_url:
+            base = settings.payment_qr_public_base_url.rstrip("/")
+            url = f"{base}/gallery/{img.storage_key.split('/')[-1]}"
+        else:
+            url = f"/study-room/gallery/{img.id}/image"
+        result.append(GalleryImageResponse(
+            id=img.id, title=img.title, alt_text=img.alt_text,
+            image_url=url, sort_order=img.sort_order, created_at=img.created_at,
+        ))
+    return result
+
+
+@router.get("/gallery/{image_id}/image")
+async def get_public_gallery_image(
+    image_id: UUID,
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+) -> Response:
+    import asyncio
+    from src.dependencies import get_storage_repo as _get_storage_repo
+    row = await repo.get_gallery_image(image_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Image not found")
+    # Read inline — can't easily inject storage here without Depends chain
+    from src.dependencies import get_app_settings as _gas, get_cognito_settings as _gcs
+    app_s = _gas()
+    cog_s = _gcs()
+    if app_s.s3_uploads_bucket:
+        from src.repositories.impl.s3_storage_repository import S3StorageRepository
+        storage = S3StorageRepository(
+            bucket=app_s.s3_uploads_bucket, prefix=app_s.s3_uploads_prefix,
+            region=cog_s.cognito_region,
+            aws_access_key_id=cog_s.aws_access_key_id,
+            aws_secret_access_key=cog_s.aws_secret_access_key,
+            aws_session_token=cog_s.aws_session_token,
+        )
+    else:
+        from src.repositories.impl.local_storage_repository import LocalStorageRepository
+        storage = LocalStorageRepository(upload_dir=app_s.payment_upload_dir, qr_dir=app_s.payment_qr_dir)
+    data = await asyncio.to_thread(storage.read_gallery_image, row.storage_key)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Image file not found")
+    return Response(content=data, media_type=row.content_type, headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.post("/availability", response_model=AvailabilityCheckResponse)

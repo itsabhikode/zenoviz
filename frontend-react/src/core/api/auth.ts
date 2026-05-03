@@ -43,7 +43,7 @@ export async function confirmForgotPassword(
 ): Promise<ApiMessageResponse> {
   const { data } = await apiClient.post<ApiMessageResponse>('/auth/confirm-forgot-password', {
     email,
-    code,
+    confirmation_code: code,
     new_password: newPassword,
   })
   return data

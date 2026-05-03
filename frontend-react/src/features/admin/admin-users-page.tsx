@@ -47,7 +47,7 @@ export default function AdminUsersPage() {
     {
       accessorKey: 'email',
       header: 'Email',
-      cell: ({ row }) => <span className="font-mono text-sm">{row.original.email}</span>,
+      cell: ({ row }) => <span className="text-sm">{row.original.email}</span>,
     },
     {
       id: 'name',

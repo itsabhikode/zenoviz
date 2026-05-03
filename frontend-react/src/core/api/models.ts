@@ -168,6 +168,21 @@ export interface UpdatePaymentSettingsRequest {
   instructions: string | null
 }
 
+export interface GalleryImageResponse {
+  id: string
+  title: string
+  alt_text: string
+  image_url: string
+  sort_order: number
+  created_at: string
+}
+
+export interface UpdateGalleryImageRequest {
+  title: string
+  alt_text: string
+  sort_order: number
+}
+
 export interface UserAdminSummary {
   user_id: string
   username: string

@@ -15,16 +15,23 @@ from src.dependencies import (
     get_booking_service,
     get_cognito_client,
     get_current_user,
+    get_storage_repo,
+    get_study_repo,
     require_admin,
 )
+from src.repositories.impl.study_repository_sqlalchemy import SqlAlchemyStudyRepository
+from src.repositories.storage_repository import AbstractStorageRepository
 from src.domain.user import CurrentUser
 from src.models.orm.study_room import Booking
 from src.models.study_api import (
     AdminApproveRequest,
     BookingResponse,
+    DashboardStatsResponse,
+    GalleryImageResponse,
     PaymentSettingsResponse,
     PricingConfigResponse,
     SeatResponse,
+    UpdateGalleryImageRequest,
     UpdatePaymentSettingsRequest,
     UpdatePricingRequest,
     UpdateSeatEnabledRequest,
@@ -84,6 +91,26 @@ def _bookings_to_admin_response(
         payload["user"] = user_map.get(b.user_id)
         out.append(BookingResponse.model_validate(payload))
     return out
+
+
+@router.get("/dashboard")
+async def get_dashboard_stats(
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    cognito: Annotated[AbstractCognitoClient, Depends(get_cognito_client)],
+) -> DashboardStatsResponse:
+    from src.services.booking_service import booking_to_response
+    stats = await repo.dashboard_stats()
+    # Enrich recent bookings
+    recent_raw = stats.pop("recent_bookings", [])
+    user_map = await _fetch_user_map(cognito, {b.user_id for b in recent_raw})
+    recent = []
+    for b in recent_raw:
+        payload = booking_to_response(b)
+        payload["user"] = user_map.get(b.user_id)
+        recent.append(BookingResponse.model_validate(payload))
+    stats["recent_bookings"] = [r.model_dump() for r in recent]
+    return DashboardStatsResponse(**stats)
 
 
 @router.get("/bookings/pending-payments", response_model=list[BookingResponse])
@@ -253,3 +280,130 @@ async def upload_payment_qr(
         return payment_settings_to_response(row, settings=settings)
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Gallery
+# ---------------------------------------------------------------------------
+
+def _gallery_image_url(img: Any, settings: AppSettings) -> str:
+    if settings.payment_qr_public_base_url:
+        base = settings.payment_qr_public_base_url.rstrip("/")
+        return f"{base}/gallery/{img.storage_key.split('/')[-1]}"
+    if img.public_url:
+        return img.public_url
+    return f"/admin/study-room/gallery/{img.id}/image"
+
+
+def _gallery_to_response(img: Any, settings: AppSettings) -> GalleryImageResponse:
+    return GalleryImageResponse(
+        id=img.id,
+        title=img.title,
+        alt_text=img.alt_text,
+        image_url=_gallery_image_url(img, settings),
+        sort_order=img.sort_order,
+        created_at=img.created_at,
+    )
+
+
+@router.get("/gallery", response_model=list[GalleryImageResponse])
+async def list_gallery(
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
+) -> list[GalleryImageResponse]:
+    rows = await repo.list_gallery_images()
+    return [_gallery_to_response(r, settings) for r in rows]
+
+
+@router.post("/gallery", status_code=status.HTTP_201_CREATED, response_model=GalleryImageResponse)
+async def upload_gallery_image(
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    storage: Annotated[AbstractStorageRepository, Depends(get_storage_repo)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
+    file: UploadFile = File(...),
+    title: str = "",
+    alt_text: str = "",
+    sort_order: int = 0,
+) -> GalleryImageResponse:
+    import asyncio
+    from datetime import datetime, timezone
+    from pathlib import PurePosixPath
+    from uuid import uuid4
+
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Image too large (max 5MB)")
+
+    ext = PurePosixPath(file.filename or "image.jpg").suffix or ".jpg"
+    image_id = uuid4()
+    storage_filename = f"{image_id}{ext}"
+    storage_key = await asyncio.to_thread(storage.save_gallery_image, storage_filename, raw)
+
+    public_url: str | None = None
+    if settings.payment_qr_public_base_url:
+        base = settings.payment_qr_public_base_url.rstrip("/")
+        public_url = f"{base}/gallery/{storage_filename}"
+
+    from src.models.orm.study_room import GalleryImage
+    row = GalleryImage(
+        id=image_id,
+        title=title,
+        alt_text=alt_text,
+        storage_key=storage_key,
+        content_type=file.content_type or "image/jpeg",
+        sort_order=sort_order,
+        public_url=public_url,
+        created_at=datetime.now(timezone.utc),
+    )
+    row = await repo.insert_gallery_image(row)
+    await repo.session.commit()
+    return _gallery_to_response(row, settings)
+
+
+@router.put("/gallery/{image_id}", response_model=GalleryImageResponse)
+async def update_gallery_image_route(
+    image_id: UUID,
+    body: UpdateGalleryImageRequest,
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    settings: Annotated[AppSettings, Depends(get_app_settings)],
+) -> GalleryImageResponse:
+    row = await repo.update_gallery_image(image_id, body.title, body.alt_text, body.sort_order)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Gallery image not found")
+    await repo.session.commit()
+    return _gallery_to_response(row, settings)
+
+
+@router.delete("/gallery/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_gallery_image_route(
+    image_id: UUID,
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    storage: Annotated[AbstractStorageRepository, Depends(get_storage_repo)],
+) -> None:
+    import asyncio
+    row = await repo.delete_gallery_image(image_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Gallery image not found")
+    await asyncio.to_thread(storage.delete_gallery_image, row.storage_key)
+    await repo.session.commit()
+
+
+@router.get("/gallery/{image_id}/image")
+async def get_gallery_image_file(
+    image_id: UUID,
+    _: Annotated[None, Depends(require_admin)],
+    repo: Annotated[SqlAlchemyStudyRepository, Depends(get_study_repo)],
+    storage: Annotated[AbstractStorageRepository, Depends(get_storage_repo)],
+) -> Response:
+    import asyncio
+    row = await repo.get_gallery_image(image_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Gallery image not found")
+    data = await asyncio.to_thread(storage.read_gallery_image, row.storage_key)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Image file not found")
+    return Response(content=data, media_type=row.content_type)

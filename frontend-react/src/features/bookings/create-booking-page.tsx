@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -178,6 +179,7 @@ export default function CreateBookingPage() {
       </Card>
 
       {canCheckSeats && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <Card>
           <CardHeader><CardTitle className="text-base">Choose a Seat</CardTitle></CardHeader>
           <CardContent>
@@ -194,9 +196,11 @@ export default function CreateBookingPage() {
             ) : null}
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {canCheckPrice && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <Card>
           <CardHeader><CardTitle className="text-base">Booking Summary</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -236,6 +240,7 @@ export default function CreateBookingPage() {
             ) : null}
           </CardContent>
         </Card>
+        </motion.div>
       )}
     </div>
   )

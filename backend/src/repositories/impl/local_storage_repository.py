@@ -27,6 +27,24 @@ class LocalStorageRepository(AbstractStorageRepository):
             return None
         return path.read_bytes()
 
+    def save_gallery_image(self, filename: str, data: bytes) -> str:
+        gallery_dir = self._upload_dir.parent / "gallery"
+        gallery_dir.mkdir(parents=True, exist_ok=True)
+        path = gallery_dir / filename
+        path.write_bytes(data)
+        return str(path.resolve())
+
+    def read_gallery_image(self, storage_key: str) -> bytes | None:
+        path = Path(storage_key)
+        if not path.exists():
+            return None
+        return path.read_bytes()
+
+    def delete_gallery_image(self, storage_key: str) -> None:
+        path = Path(storage_key)
+        if path.exists():
+            path.unlink()
+
     def read_payment_proof(self, stored: str) -> bytes | None:
         path = Path(stored)
         if path.is_absolute():
