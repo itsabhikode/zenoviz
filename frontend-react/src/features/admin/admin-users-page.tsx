@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as adminUsersApi from '@/core/api/admin-users'
+import type { UserAdminSummary } from '@/core/api/models'
+import { DataTable } from '@/components/data-table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Search } from 'lucide-react'
 
@@ -40,9 +43,63 @@ export default function AdminUsersPage() {
     onError: () => toast.error('Failed to revoke role'),
   })
 
+  const columns: ColumnDef<UserAdminSummary>[] = [
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      cell: ({ row }) => <span className="font-mono text-sm">{row.original.email}</span>,
+    },
+    {
+      id: 'name',
+      header: 'Name',
+      accessorFn: (row) => [row.given_name, row.family_name].filter(Boolean).join(' ') || '\u2014',
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={row.original.enabled ? 'default' : 'destructive'}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      id: 'roles',
+      header: 'Roles',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {row.original.roles.map((r) => (
+            <Badge
+              key={r}
+              variant="secondary"
+              className="cursor-pointer hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => revokeMutation.mutate({ userId: row.original.user_id, role: r })}
+            >
+              {r} &times;
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <RoleGrantDialog onGrant={(role) => grantMutation.mutate({ userId: row.original.user_id, role })} />
+      ),
+    },
+  ]
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Users</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Manage user accounts and roles</p>
+      </div>
 
       <div className="mb-4 flex gap-2">
         <div className="relative flex-1">
@@ -58,50 +115,7 @@ export default function AdminUsersPage() {
         <Button onClick={() => setEmailPrefix(searchInput)}>Search</Button>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Roles</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="py-8 text-center">Loading...</TableCell></TableRow>
-            ) : data?.users.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="py-8 text-center">No users found</TableCell></TableRow>
-            ) : (
-              data?.users.map((u) => (
-                <TableRow key={u.user_id}>
-                  <TableCell className="font-mono text-sm">{u.email}</TableCell>
-                  <TableCell>{[u.given_name, u.family_name].filter(Boolean).join(' ') || '\u2014'}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.enabled ? 'default' : 'destructive'}>
-                      {u.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {u.roles.map((r) => (
-                        <Badge key={r} variant="secondary" className="cursor-pointer" onClick={() => revokeMutation.mutate({ userId: u.user_id, role: r })}>
-                          {r} &times;
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <RoleGrantDialog onGrant={(role) => grantMutation.mutate({ userId: u.user_id, role })} />
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable columns={columns} data={data?.users ?? []} emptyMessage="No users found" />
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
 import * as adminBookingsApi from '@/core/api/admin-bookings'
-import type { BookingStatus } from '@/core/api/models'
+import type { BookingResponse, BookingStatus } from '@/core/api/models'
 import { nprText } from '@/core/currency'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DataTable } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,6 +19,46 @@ const statusVariant: Record<BookingStatus, 'default' | 'secondary' | 'destructiv
   REJECTED: 'destructive',
 }
 
+const columns: ColumnDef<BookingResponse>[] = [
+  {
+    id: 'user',
+    header: 'User',
+    accessorFn: (row) => row.user?.email ?? row.user_id.slice(0, 8),
+    cell: ({ getValue }) => <span className="text-sm">{getValue() as string}</span>,
+  },
+  {
+    accessorKey: 'seat_id',
+    header: 'Seat',
+  },
+  {
+    id: 'dates',
+    header: 'Dates',
+    accessorFn: (row) => row.start_date,
+    cell: ({ row }) => (
+      <span className="text-sm">{row.original.start_date} &rarr; {row.original.end_date}</span>
+    ),
+  },
+  {
+    accessorKey: 'access_type',
+    header: 'Access',
+  },
+  {
+    id: 'total',
+    header: 'Total',
+    accessorFn: (row) => Number.parseFloat(row.final_price),
+    cell: ({ row }) => nprText(row.original.final_price),
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => (
+      <Badge variant={statusVariant[row.original.status]}>
+        {row.original.status.replace('_', ' ')}
+      </Badge>
+    ),
+  },
+]
+
 export default function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
 
@@ -31,7 +72,10 @@ export default function AdminBookingsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">All Bookings</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">All Bookings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">View and filter all reservations</p>
+        </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -40,36 +84,7 @@ export default function AdminBookingsPage() {
         </Select>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Seat</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Access</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookings?.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center">No bookings found</TableCell></TableRow>
-            ) : (
-              bookings?.map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell className="text-sm">{b.user?.email ?? b.user_id.slice(0, 8)}</TableCell>
-                  <TableCell>{b.seat_id}</TableCell>
-                  <TableCell className="text-sm">{b.start_date} &rarr; {b.end_date}</TableCell>
-                  <TableCell>{b.access_type}</TableCell>
-                  <TableCell>{nprText(b.final_price)}</TableCell>
-                  <TableCell><Badge variant={statusVariant[b.status]}>{b.status.replace('_', ' ')}</Badge></TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable columns={columns} data={bookings ?? []} emptyMessage="No bookings found" />
     </div>
   )
 }
