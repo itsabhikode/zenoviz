@@ -48,7 +48,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-lg border border-border/40 bg-card shadow-sm">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -57,7 +57,7 @@ export function DataTable<TData, TValue>({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      header.column.getCanSort() && 'cursor-pointer select-none',
+                      header.column.getCanSort() && 'cursor-pointer select-none hover:text-foreground',
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >
@@ -66,7 +66,7 @@ export function DataTable<TData, TValue>({
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
                       {header.column.getCanSort() && (
-                        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/40" />
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground/40" />
                       )}
                     </div>
                   </TableHead>
