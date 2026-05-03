@@ -53,15 +53,20 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left hero — violet gradient + pricing */}
-      <div className="relative hidden w-1/2 flex-col items-center justify-center bg-gradient-to-br from-violet-600 to-violet-800 p-12 text-white lg:flex">
-        <div className="max-w-md text-center">
-          <h1 className="text-4xl font-bold tracking-tight">Zenoviz Study Room</h1>
-          <p className="mt-3 text-lg text-violet-100">
+      <div className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-violet-600 via-violet-700 to-indigo-800 p-12 text-white lg:flex">
+        {/* Decorative circles */}
+        <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/5" />
+        <div className="absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-white/5" />
+        <div className="absolute right-12 top-12 h-24 w-24 rounded-full bg-white/10" />
+
+        <div className="relative max-w-md text-center">
+          <h1 className="text-4xl font-bold tracking-tight drop-shadow-sm">Zenoviz Study Room</h1>
+          <p className="mt-3 text-lg text-violet-100/90">
             Reserve your perfect study spot — quiet, focused, affordable.
           </p>
 
           {pricing && (
-            <div className="mt-8 rounded-xl bg-white/10 p-6 backdrop-blur">
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur-md">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-violet-200">
                 Pricing (per day)
               </h3>
@@ -98,7 +103,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right form card */}
-      <div className="flex w-full items-center justify-center px-6 lg:w-1/2">
+      <div className="flex w-full items-center justify-center bg-white px-6 lg:w-1/2">
         <div className="w-full max-w-sm">
           {/* Mobile hero */}
           <div className="mb-8 text-center lg:hidden">
@@ -128,8 +133,8 @@ export default function LoginPage() {
                     {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? 'Signing in…' : 'Sign in'}
+                  <Button type="submit" className="btn-gradient w-full" disabled={isSubmitting}>
+                    {isSubmitting ? 'Signing in...' : 'Sign in'}
                   </Button>
 
                   {googleOAuthAvailable && (

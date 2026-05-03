@@ -122,7 +122,10 @@ export default function CreateBookingPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Book a Seat</h1>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Book a Seat</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Choose your dates, time slot, and preferred seat</p>
+      </div>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Select Dates</CardTitle></CardHeader>
@@ -226,8 +229,8 @@ export default function CreateBookingPage() {
                   <Separator />
                   <div className="flex justify-between font-semibold"><span>Total</span><span>{nprText(avail.final_price)}</span></div>
                 </div>
-                <Button className="mt-4 w-full" onClick={handleSubmit} disabled={!avail.available || createMutation.isPending}>
-                  {createMutation.isPending ? 'Creating…' : 'Confirm Booking'}
+                <Button className="btn-gradient mt-4 w-full" onClick={handleSubmit} disabled={!avail.available || createMutation.isPending}>
+                  {createMutation.isPending ? 'Creating...' : 'Confirm Booking'}
                 </Button>
               </>
             ) : null}

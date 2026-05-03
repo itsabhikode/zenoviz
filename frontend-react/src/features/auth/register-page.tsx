@@ -97,8 +97,8 @@ export default function RegisterPage() {
               {errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating account…' : 'Register'}
+            <Button type="submit" className="btn-gradient w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating account...' : 'Register'}
             </Button>
 
             {googleOAuthAvailable && (

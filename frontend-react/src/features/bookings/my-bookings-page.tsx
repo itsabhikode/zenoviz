@@ -79,7 +79,10 @@ export default function MyBookingsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">My Bookings</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight">My Bookings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your study room reservations</p>
+      </div>
 
       {notice === 'one-booking' && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -99,10 +102,10 @@ export default function MyBookingsPage() {
       ) : (
         <div className="space-y-4">
           {sorted.map((b) => (
-            <Card key={b.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base">
-                  Seat {b.seat_id} — {b.start_date} to {b.end_date}
+            <Card key={b.id} className="overflow-hidden border-border/60 shadow-sm transition-shadow hover:shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between bg-muted/30 pb-2">
+                <CardTitle className="text-base font-semibold">
+                  Seat {b.seat_id} &middot; {b.start_date} &rarr; {b.end_date}
                 </CardTitle>
                 <Badge variant={statusVariant[b.status]}>{b.status.replace('_', ' ')}</Badge>
               </CardHeader>
